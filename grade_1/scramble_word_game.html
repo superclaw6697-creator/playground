@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>🌟 Scramble Word Game</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet" />
+  <script src="word_lists.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --purple: #667eea;
+      --purple2: #764ba2;
+      --green: #51cf66;
+      --green2: #2f9e44;
+      --red: #ff4757;
+      --yellow: #ffd43b;
+    }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, var(--purple) 0%, var(--purple2) 100%);
+      overflow-x: hidden;
+    }
+
+    /* ── Floating bg ── */
+    .bg-emoji {
+      position: fixed; opacity: 0.1; pointer-events: none;
+      animation: floatUp linear infinite; z-index: 0;
+    }
+    @keyframes floatUp {
+      0%   { transform: translateY(105vh) rotate(0deg); }
+      100% { transform: translateY(-15vh) rotate(360deg); }
+    }
+
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 700px; margin: 0 auto;
+      padding: 1rem 1rem 3rem;
+      display: flex; flex-direction: column; align-items: center; gap: 0.8rem;
+    }
+
+    /* ── Header ── */
+    .header { width: 100%; text-align: center; color: white; }
+    .header h1 { font-family: 'Fredoka One', cursive; font-size: 2.2rem; text-shadow: 2px 3px 6px rgba(0,0,0,0.25); }
+    .header p { opacity: 0.85; font-size: 0.9rem; margin-top: 0.15rem; }
+
+    /* ── SCREEN: List selection ── */
+    #screen-select { width: 100%; }
+    .list-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 1rem; margin-top: 0.5rem;
+    }
+    .list-card {
+      background: white; border-radius: 20px; padding: 1.4rem 1rem;
+      text-align: center; cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      transition: transform 0.2s, box-shadow 0.2s;
+      border: 3px solid transparent;
+    }
+    .list-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 14px 30px rgba(0,0,0,0.22);
+      border-color: var(--yellow);
+    }
+    .list-card .lc-emoji { font-size: 2.8rem; display: block; margin-bottom: 0.4rem; }
+    .list-card .lc-name { font-weight: 800; font-size: 1rem; color: #333; }
+    .list-card .lc-count { font-size: 0.8rem; color: #888; margin-top: 0.2rem; }
+
+    /* ── SCREEN: Game ── */
+    #screen-game { width: 100%; display: none; }
+
+    /* Progress stars */
+    .progress { display: flex; gap: 0.3rem; justify-content: center; flex-wrap: wrap; margin-top: 0.4rem; }
+    .pstar { font-size: 1.5rem; filter: grayscale(1) brightness(0.55); transition: filter 0.3s; }
+    .pstar.earned { filter: none; animation: starPop 0.55s cubic-bezier(.175,.885,.32,1.275); }
+    @keyframes starPop { 0%{transform:scale(1)} 50%{transform:scale(1.7) rotate(-10deg)} 100%{transform:scale(1)} }
+
+    /* Game card */
+    .card {
+      background: white; border-radius: 28px;
+      padding: 1.4rem 1.2rem 1.6rem;
+      width: 100%; box-shadow: 0 12px 44px rgba(0,0,0,0.22);
+      text-align: center;
+    }
+
+    .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; }
+    .level-badge {
+      background: linear-gradient(135deg, var(--purple), var(--purple2));
+      color: white; font-weight: 800; padding: 0.25rem 1rem;
+      border-radius: 20px; font-size: 0.88rem;
+    }
+    .attempts-indicator { display: flex; gap: 0.3rem; }
+    .heart { font-size: 1.3rem; transition: all 0.3s; }
+    .heart.lost { filter: grayscale(1) brightness(0.6); transform: scale(0.85); }
+
+    .word-emoji { display: block; font-size: 4rem; margin: 0.2rem 0 0.4rem; animation: bop 1.8s ease-in-out infinite; }
+    @keyframes bop { 0%,100%{transform:translateY(0) rotate(-3deg)} 50%{transform:translateY(-12px) rotate(3deg)} }
+
+    /* Hint display (2-letter reveal) */
+    .hint-display {
+      font-family: 'Fredoka One', cursive; font-size: 2rem;
+      color: #495057; letter-spacing: 4px; min-height: 2.8rem;
+      transition: opacity 0.6s;
+    }
+
+    /* Slots */
+    .slots-wrap { display: flex; flex-wrap: wrap; gap: 0.45rem; justify-content: center; margin: 0.9rem 0 0.6rem; }
+    .slot {
+      width: 44px; height: 52px;
+      border: 3px dashed #ced4da; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Fredoka One', cursive; font-size: 1.4rem;
+      background: #f8f9fa; cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, transform 0.15s;
+      position: relative;
+    }
+    .slot.over       { border-color: var(--purple); background: #eef0ff; transform: scale(1.12); }
+    .slot.correct    { border: 3px solid var(--green); background: #ebfbee; color: var(--green2); cursor: default; animation: correctPop 0.35s ease; }
+    .slot.hinted     { border: 3px solid var(--yellow); background: #fff9db; color: #856404; cursor: default; }
+    .slot.wrong-flash { animation: wrongFlash 0.45s ease; }
+    .slot.shake-only  { animation: shakeAnim 0.4s ease; }
+
+    @keyframes correctPop { 0%{transform:scale(1)} 50%{transform:scale(1.25)} 100%{transform:scale(1)} }
+    @keyframes wrongFlash {
+      0%   { background: #ffe3e3; border-color: var(--red); color: var(--red); transform: translateX(0); }
+      20%  { transform: translateX(-7px); }
+      40%  { transform: translateX(7px); }
+      60%  { transform: translateX(-5px); }
+      80%  { transform: translateX(5px); }
+      100% { background: #f8f9fa; border-color: #ced4da; color: inherit; transform: translateX(0); }
+    }
+    @keyframes shakeAnim {
+      0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)}
+      60%{transform:translateX(-6px)} 80%{transform:translateX(6px)}
+    }
+
+    /* Letter bank */
+    .bank-label { font-size: 0.8rem; color: #868e96; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.35rem; }
+    .letter-bank {
+      display: flex; flex-wrap: wrap; gap: 0.55rem; justify-content: center;
+      min-height: 64px; padding: 0.6rem;
+      background: #f1f3f5; border-radius: 18px;
+    }
+    .tile {
+      width: 44px; height: 52px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Fredoka One', cursive; font-size: 1.4rem;
+      color: white; cursor: grab; user-select: none; touch-action: none;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+      transition: transform 0.15s, box-shadow 0.15s;
+      animation: tileAppear 0.4s cubic-bezier(.175,.885,.32,1.275) backwards;
+    }
+    .tile:hover    { transform: translateY(-4px) scale(1.07); box-shadow: 0 10px 18px rgba(0,0,0,0.22); }
+    .tile.selected { transform: translateY(-7px) scale(1.12); box-shadow: 0 14px 24px rgba(0,0,0,0.28); outline: 3px solid white; }
+    .tile.ghost    { opacity: 0.3; cursor: grabbing; }
+    @keyframes tileAppear { from{transform:translateY(30px) scale(0.7);opacity:0} to{transform:none;opacity:1} }
+
+    /* Buttons */
+    .btn-row { margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      padding: 0.6rem 1.4rem; border: none; border-radius: 50px;
+      font-family: 'Nunito', sans-serif; font-size: 1rem; font-weight: 800;
+      cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn:hover  { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,0.2); }
+    .btn:active { transform: translateY(0); }
+    .btn-hint   { background: var(--yellow); color: #5c3d00; }
+    .btn-back   { background: #dee2e6; color: #495057; }
+    .btn-next   {
+      background: linear-gradient(135deg, var(--green), var(--green2));
+      color: white; font-size: 1.05rem; padding: 0.75rem 2rem;
+      display: none;
+    }
+    .btn-next.show { display: inline-flex; align-items: center; gap: 0.3rem; animation: pulse 1s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+
+    /* Confetti */
+    .confetti-bit {
+      position: fixed; border-radius: 2px; pointer-events: none; top: -12px;
+      animation: cFall linear forwards;
+    }
+    @keyframes cFall { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) rotate(720deg);opacity:0} }
+
+    /* Completion overlay */
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.35s;
+    }
+    .overlay.show { opacity: 1; pointer-events: all; }
+    .overlay-card {
+      background: white; border-radius: 28px; padding: 2.4rem 2rem;
+      text-align: center; max-width: 360px; width: 92%;
+      animation: popIn 0.5s cubic-bezier(.175,.885,.32,1.275);
+    }
+    @keyframes popIn { from{transform:scale(0.4);opacity:0} to{transform:scale(1);opacity:1} }
+    .overlay-card h2 { font-family: 'Fredoka One', cursive; font-size: 2.8rem; color: #f59f00; margin: 0.3rem 0; }
+
+    /* Touch ghost */
+    #touch-ghost {
+      position: fixed; pointer-events: none; z-index: 999; opacity: 0.85;
+      transform: translate(-50%, -50%) scale(1.1); display: none;
+      border-radius: 12px; font-family: 'Fredoka One', cursive;
+      font-size: 1.4rem; color: white;
+      width: 48px; height: 56px;
+      align-items: center; justify-content: center;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+<body>
+
+<div id="touch-ghost"></div>
+
+<!-- All-done overlay -->
+<div class="overlay" id="overlay">
+  <div class="overlay-card">
+    <div style="font-size:4.5rem;line-height:1">🏆</div>
+    <h2>You Did It!</h2>
+    <p style="font-size:1.05rem;color:#495057;margin:0.5rem 0 0.8rem">All 10 words complete!</p>
+    <p style="font-size:2.2rem">⭐⭐⭐⭐⭐</p>
+    <button class="btn btn-next show" onclick="goSelectScreen()" style="margin-top:1.2rem">Play Again 🔄</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="header">
+    <h1>🌟 Scramble Word Game</h1>
+    <p>Grade 1 · Spelling</p>
+  </div>
+
+  <!-- ── Screen: Select word list ── -->
+  <div id="screen-select">
+    <p style="color:white;text-align:center;margin-bottom:0.5rem;font-weight:700;font-size:1.05rem">
+      Choose a word list 👇
+    </p>
+    <div class="list-grid" id="list-grid"></div>
+  </div>
+
+  <!-- ── Screen: Game ── -->
+  <div id="screen-game">
+    <div class="progress" id="progress"></div>
+
+    <div class="card">
+      <div class="top-bar">
+        <div class="level-badge" id="level-badge">Word 1 / 10</div>
+        <div class="attempts-indicator" id="attempts">
+          <span class="heart">❤️</span>
+          <span class="heart">❤️</span>
+          <span class="heart">❤️</span>
+        </div>
+      </div>
+
+      <span class="word-emoji" id="word-emoji">⭐</span>
+      <div class="hint-display" id="hint-display"></div>
+
+      <div class="slots-wrap" id="slots"></div>
+
+      <div class="bank-label">Drag or tap the letters ✏️</div>
+      <div class="letter-bank" id="bank"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-back" onclick="goSelectScreen()">◀ Lists</button>
+        <button class="btn btn-hint" onclick="showHint()">💡 Hint (2 letters)</button>
+        <button class="btn btn-next" id="next-btn" onclick="nextWord()">Next ➡️</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Emoji set per word (fallback) ────────────────────────────
+const WORD_EMOJIS = {
+  // March26
+  shorts:'👖', books:'📚', baby:'👶', birthday:'🎂', boy:'👦',
+  brother:'👬', child:'🧒', children:'👧', daddy:'👨', father:'👴',
+  friend:'🤝', girl:'👧', grandfather:'👴', grandmother:'👵',
+  man:'🧑', men:'👨‍👨', mother:'👩', mummy:'🤱', sister:'👯',
+  // Week12
+  difficult:'🤔', different:'🦋', hockey:'🏒', unicycle:'🎪',
+  rocket:'🚀', basketball:'🏀', bounce:'⚡', insect:'🐛',
+  baseball:'⚾', paint:'🎨',
+};
+
+const TILE_PALETTE = [
+  ['#FF6B6B','#ee5a24'],['#fdcb6e','#e17055'],['#6c5ce7','#a29bfe'],
+  ['#00b894','#55efc4'],['#0984e3','#74b9ff'],['#fd79a8','#e84393'],
+  ['#00cec9','#81ecec'],['#e17055','#fab1a0'],['#a29bfe','#6c5ce7'],
+  ['#55efc4','#00b894'],
+];
+
+const CONFETTI_COLORS = ['#FF6B6B','#FFC300','#4ECDC4','#A29BFE','#FD79A8','#55EFC4','#FDCB6E','#74b9ff'];
+
+// ── State ─────────────────────────────────────────────────────
+let currentList   = null;   // selected word list object
+let playWords     = [];     // 10 shuffled words for this session
+let wordIndex     = 0;      // current word index (0–9)
+let earnedCount   = 0;      // words completed
+let wrongAttempts = 0;      // wrong drops for current word
+let hintUsed      = false;  // hint button used this word
+let selected      = null;   // selected tile element
+let dragging      = null;   // mouse-drag tile
+let audioCtx      = null;
+
+// ── Audio ─────────────────────────────────────────────────────
+function getCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function beep(freq, type, dur, vol = 0.3) {
+  try {
+    const c = getCtx(), o = c.createOscillator(), g = c.createGain();
+    o.connect(g); g.connect(c.destination);
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+    o.start(); o.stop(c.currentTime + dur);
+  } catch {}
+}
+function sndCorrect()  { [523,659,784].forEach((f,i) => setTimeout(() => beep(f,'sine',0.18,0.35), i*85)); }
+function sndWrong()    { beep(180,'sawtooth',0.22,0.25); }
+function sndWin()      { [523,659,784,1047].forEach((f,i) => setTimeout(() => beep(f,'sine',0.3,0.42), i*110)); }
+
+// ── Utils ──────────────────────────────────────────────────────
+function shuffle(a) {
+  const r = [...a];
+  for (let i = r.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [r[i], r[j]] = [r[j], r[i]];
+  }
+  return r;
+}
+
+// ── Floating BG emojis ─────────────────────────────────────────
+function spawnBg() {
+  ['⭐','🌟','✨','💫','🎈','🎉','🌈','🦄','🎯','🏆','🎀','🎊'].forEach(e => {
+    const el = document.createElement('div');
+    el.className = 'bg-emoji';
+    el.textContent = e;
+    el.style.cssText = `left:${Math.random()*100}vw;font-size:${1.5+Math.random()*2.5}rem;animation-duration:${9+Math.random()*12}s;animation-delay:${Math.random()*12}s`;
+    document.body.appendChild(el);
+  });
+}
+
+// ── Confetti ───────────────────────────────────────────────────
+function confetti(n) {
+  for (let i = 0; i < n; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-bit';
+    const size = 7 + Math.random() * 8;
+    el.style.cssText = `left:${Math.random()*100}vw;width:${size}px;height:${size}px;background:${CONFETTI_COLORS[~~(Math.random()*CONFETTI_COLORS.length)]};animation-duration:${1.6+Math.random()*2}s;animation-delay:${Math.random()*0.4}s;border-radius:${Math.random()>0.5?'50%':'2px'}`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 4200);
+  }
+}
+
+// ── Screen: List selection ─────────────────────────────────────
+function buildSelectScreen() {
+  const grid = document.getElementById('list-grid');
+  grid.innerHTML = '';
+  WORD_LISTS.forEach(list => {
+    const card = document.createElement('div');
+    card.className = 'list-card';
+    card.innerHTML = `
+      <span class="lc-emoji">${list.emoji || '📝'}</span>
+      <div class="lc-name">${list.name}</div>
+      <div class="lc-count">${list.words.length} words</div>
+    `;
+    card.onclick = () => startGame(list);
+    grid.appendChild(card);
+  });
+}
+
+function goSelectScreen() {
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('screen-game').style.display = 'none';
+  document.getElementById('screen-select').style.display = 'block';
+  buildSelectScreen();
+}
+
+// ── Game start ─────────────────────────────────────────────────
+function startGame(list) {
+  currentList  = list;
+  playWords    = shuffle(list.words).slice(0, 10);
+  wordIndex    = 0;
+  earnedCount  = 0;
+
+  document.getElementById('screen-select').style.display = 'none';
+  document.getElementById('screen-game').style.display   = 'block';
+
+  renderProgress();
+  loadWord(0);
+}
+
+// ── Progress ───────────────────────────────────────────────────
+function renderProgress() {
+  const c = document.getElementById('progress');
+  c.innerHTML = '';
+  playWords.forEach((_, i) => {
+    const s = document.createElement('span');
+    s.className = 'pstar' + (i < earnedCount ? ' earned' : '');
+    s.textContent = '⭐';
+    c.appendChild(s);
+  });
+}
+
+// ── Load word ──────────────────────────────────────────────────
+function loadWord(idx) {
+  const word = playWords[idx];
+  wrongAttempts = 0;
+  hintUsed = false;
+  selected = null;
+  dragging = null;
+
+  document.getElementById('level-badge').textContent = `Word ${idx + 1} / ${playWords.length}`;
+  document.getElementById('word-emoji').textContent  = WORD_EMOJIS[word] || '📝';
+  document.getElementById('hint-display').textContent = '';
+  document.getElementById('hint-display').style.opacity = '1';
+  document.getElementById('next-btn').classList.remove('show');
+
+  renderHearts();
+
+  // Slots
+  const slotsEl = document.getElementById('slots');
+  slotsEl.innerHTML = '';
+  [...word].forEach((letter, i) => {
+    const s = document.createElement('div');
+    s.className = 'slot';
+    s.dataset.letter = letter;
+    s.dataset.pos    = i;
+
+    s.addEventListener('dragover',  e => { e.preventDefault(); if (!s.classList.contains('correct') && !s.classList.contains('hinted')) s.classList.add('over'); });
+    s.addEventListener('dragleave', () => s.classList.remove('over'));
+    s.addEventListener('drop',      e => { e.preventDefault(); s.classList.remove('over'); tryPlace(s); });
+    s.addEventListener('click',     () => { if (!s.classList.contains('correct') && !s.classList.contains('hinted')) tryPlace(s); });
+
+    slotsEl.appendChild(s);
+  });
+
+  // Letter bank
+  const bankEl = document.getElementById('bank');
+  bankEl.innerHTML = '';
+  shuffle([...word]).forEach((letter, i) => {
+    bankEl.appendChild(makeTile(letter, i));
+  });
+}
+
+function makeTile(letter, colorIdx) {
+  const t = document.createElement('div');
+  t.className = 'tile';
+  t.textContent = letter;
+  t.dataset.letter = letter;
+  const pal = TILE_PALETTE[colorIdx % TILE_PALETTE.length];
+  t.style.background = `linear-gradient(135deg, ${pal[0]}, ${pal[1]})`;
+  t.style.animationDelay = `${colorIdx * 0.055}s`;
+
+  t.draggable = true;
+  t.addEventListener('dragstart', e => { e.dataTransfer.setData('text', letter); dragging = t; setTimeout(() => t.classList.add('ghost'), 0); });
+  t.addEventListener('dragend',   () => { t.classList.remove('ghost'); dragging = null; });
+  t.addEventListener('click', () => {
+    if (selected === t) { deselect(); return; }
+    deselect();
+    selected = t;
+    t.classList.add('selected');
+  });
+  t.addEventListener('touchstart', onTouchStart, { passive: false });
+  t.addEventListener('touchmove',  onTouchMove,  { passive: false });
+  t.addEventListener('touchend',   onTouchEnd,   { passive: false });
+  return t;
+}
+
+function deselect() {
+  if (selected) { selected.classList.remove('selected'); selected = null; }
+}
+
+// ── Hearts ─────────────────────────────────────────────────────
+function renderHearts() {
+  const el = document.getElementById('attempts');
+  [...el.children].forEach((h, i) => {
+    h.classList.toggle('lost', i < wrongAttempts);
+  });
+}
+
+// ── Try place ─────────────────────────────────────────────────
+function tryPlace(slot) {
+  const tile = dragging || selected;
+  if (!tile || slot.classList.contains('correct') || slot.classList.contains('hinted')) return;
+
+  const tileLetter = tile.dataset.letter;
+  const slotLetter = slot.dataset.letter;
+
+  if (tileLetter === slotLetter) {
+    // ✅ Correct
+    slot.textContent = tileLetter;
+    slot.classList.add('correct');
+    tile.remove();
+    sndCorrect();
+
+    const allDone = [...document.querySelectorAll('.slot')].every(s =>
+      s.classList.contains('correct') || s.classList.contains('hinted')
+    );
+    if (allDone) setTimeout(onWordDone, 360);
+
+  } else {
+    // ❌ Wrong — red flash
+    slot.classList.add('wrong-flash');
+    setTimeout(() => slot.classList.remove('wrong-flash'), 460);
+    sndWrong();
+
+    wrongAttempts++;
+    renderHearts();
+
+    // After 3 wrong — auto-reveal first letter
+    if (wrongAttempts >= 3) {
+      setTimeout(revealFirstLetter, 500);
+    }
+  }
+
+  deselect();
+  dragging = null;
+}
+
+// ── Reveal first letter (auto after 3 wrongs) ─────────────────
+function revealFirstLetter() {
+  const slots = [...document.querySelectorAll('.slot')];
+  const first = slots.find(s => !s.classList.contains('correct') && !s.classList.contains('hinted'));
+  if (!first) return;
+
+  const letter = first.dataset.letter;
+  first.textContent = letter;
+  first.classList.add('hinted');
+
+  // Remove matching tile from bank
+  const tile = [...document.querySelectorAll('.tile')].find(t => t.dataset.letter === letter);
+  if (tile) tile.remove();
+
+  // Check if word done
+  const allDone = slots.every(s => s.classList.contains('correct') || s.classList.contains('hinted'));
+  if (allDone) setTimeout(onWordDone, 360);
+}
+
+// ── Hint button: reveal 2 letters ─────────────────────────────
+function showHint() {
+  const slots = shuffle(
+    [...document.querySelectorAll('.slot')].filter(s =>
+      !s.classList.contains('correct') && !s.classList.contains('hinted')
+    )
+  );
+  const toReveal = slots.slice(0, 2);
+  toReveal.forEach(slot => {
+    const letter = slot.dataset.letter;
+    slot.textContent = letter;
+    slot.classList.add('hinted');
+
+    const tile = [...document.querySelectorAll('.tile')].find(t => t.dataset.letter === letter);
+    if (tile) tile.remove();
+  });
+
+  // Check done
+  const allSlots = [...document.querySelectorAll('.slot')];
+  const allDone  = allSlots.every(s => s.classList.contains('correct') || s.classList.contains('hinted'));
+  if (allDone) setTimeout(onWordDone, 360);
+}
+
+// ── Word done ──────────────────────────────────────────────────
+function onWordDone() {
+  earnedCount = wordIndex + 1;
+  renderProgress();
+  sndWin();
+  confetti(40);
+
+  if (wordIndex >= playWords.length - 1) {
+    setTimeout(() => {
+      document.getElementById('overlay').classList.add('show');
+      confetti(80);
+    }, 900);
+  } else {
+    document.getElementById('next-btn').classList.add('show');
+  }
+}
+
+function nextWord() {
+  wordIndex++;
+  if (wordIndex < playWords.length) loadWord(wordIndex);
+}
+
+// ── Touch drag ─────────────────────────────────────────────────
+const ghost    = document.getElementById('touch-ghost');
+let touchTile  = null;
+
+function onTouchStart(e) {
+  e.preventDefault();
+  touchTile = e.currentTarget;
+  dragging  = touchTile;
+  ghost.textContent    = touchTile.textContent;
+  ghost.style.background = touchTile.style.background;
+  ghost.style.display  = 'flex';
+  const t = e.touches[0];
+  ghost.style.left = t.clientX + 'px';
+  ghost.style.top  = t.clientY + 'px';
+}
+function onTouchMove(e) {
+  e.preventDefault();
+  if (!touchTile) return;
+  const t = e.touches[0];
+  ghost.style.left = t.clientX + 'px';
+  ghost.style.top  = t.clientY + 'px';
+  ghost.style.display = 'none';
+  const under = document.elementFromPoint(t.clientX, t.clientY);
+  ghost.style.display = 'flex';
+  document.querySelectorAll('.slot').forEach(s => s.classList.remove('over'));
+  if (under?.classList.contains('slot') && !under.classList.contains('correct') && !under.classList.contains('hinted'))
+    under.classList.add('over');
+}
+function onTouchEnd(e) {
+  e.preventDefault();
+  ghost.style.display = 'none';
+  if (!touchTile) return;
+  const t = e.changedTouches[0];
+  ghost.style.display = 'none';
+  const under = document.elementFromPoint(t.clientX, t.clientY);
+  document.querySelectorAll('.slot').forEach(s => s.classList.remove('over'));
+  if (under?.classList.contains('slot')) tryPlace(under);
+  touchTile = null;
+  dragging  = null;
+}
+
+// ── Init ───────────────────────────────────────────────────────
+spawnBg();
+buildSelectScreen();
+</script>
+</body>
+</html>
