@@ -75,7 +75,7 @@
 
     /* Progress stars */
     .progress { display: flex; gap: 0.3rem; justify-content: center; flex-wrap: wrap; margin-top: 0.4rem; }
-    .pstar { font-size: 1.5rem; filter: grayscale(1) brightness(0.55); transition: filter 0.3s; }
+    .pstar { font-size: 1.1rem; filter: grayscale(1) brightness(0.55); transition: filter 0.3s; }
     .pstar.earned { filter: none; animation: starPop 0.55s cubic-bezier(.175,.885,.32,1.275); }
     @keyframes starPop { 0%{transform:scale(1)} 50%{transform:scale(1.7) rotate(-10deg)} 100%{transform:scale(1)} }
 
@@ -188,19 +188,45 @@
 
     /* Completion overlay */
     .overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-      backdrop-filter: blur(4px);
-      display: flex; align-items: center; justify-content: center;
+      position: fixed; inset: 0; background: rgba(80,40,120,0.72);
+      backdrop-filter: blur(6px);
+      display: flex; align-items: flex-start; justify-content: center;
       z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.35s;
+      overflow-y: auto; padding: 1.5rem 0.8rem 2rem;
     }
     .overlay.show { opacity: 1; pointer-events: all; }
     .overlay-card {
-      background: white; border-radius: 28px; padding: 2.4rem 2rem;
-      text-align: center; max-width: 360px; width: 92%;
+      background: white; border-radius: 28px; padding: 1.8rem 1.4rem 2rem;
+      text-align: center; max-width: 520px; width: 100%;
       animation: popIn 0.5s cubic-bezier(.175,.885,.32,1.275);
+      margin: auto;
     }
     @keyframes popIn { from{transform:scale(0.4);opacity:0} to{transform:scale(1);opacity:1} }
-    .overlay-card h2 { font-family: 'Fredoka One', cursive; font-size: 2.8rem; color: #f59f00; margin: 0.3rem 0; }
+    .overlay-card h2 { font-family: 'Fredoka One', cursive; font-size: 2.4rem; color: #f59f00; margin: 0.3rem 0; }
+
+    /* Result sections */
+    .result-section { margin-top: 1.2rem; text-align: left; }
+    .result-section h3 {
+      font-family: 'Fredoka One', cursive; font-size: 1.2rem;
+      margin-bottom: 0.5rem; padding: 0.3rem 0.8rem; border-radius: 10px;
+      display: inline-block;
+    }
+    .section-perfect h3 { background: #ebfbee; color: #2f9e44; }
+    .section-review  h3 { background: #fff3cd; color: #856404; }
+    .word-results-grid {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+    }
+    .word-result-card {
+      border-radius: 14px; padding: 0.55rem 0.8rem;
+      display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+      min-width: 90px; flex: 1 1 90px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .word-result-card.perfect { background: #ebfbee; border: 2px solid #a9e6b5; }
+    .word-result-card.review  { background: #fff9db; border: 2px solid #ffe066; }
+    .wrc-word { font-family: 'Fredoka One', cursive; font-size: 1rem; color: #333; }
+    .wrc-hearts { font-size: 0.95rem; letter-spacing: 1px; }
+    .wrc-hint { font-size: 0.75rem; background: #ffe066; color: #856404; border-radius: 6px; padding: 0.1rem 0.4rem; font-weight: 800; }
 
     /* Touch ghost */
     #touch-ghost {
@@ -218,15 +244,9 @@
 
 <div id="touch-ghost"></div>
 
-<!-- All-done overlay -->
+<!-- All-done overlay (content built dynamically) -->
 <div class="overlay" id="overlay">
-  <div class="overlay-card">
-    <div style="font-size:4.5rem;line-height:1">🏆</div>
-    <h2>You Did It!</h2>
-    <p style="font-size:1.05rem;color:#495057;margin:0.5rem 0 0.8rem">All 10 words complete!</p>
-    <p style="font-size:2.2rem">⭐⭐⭐⭐⭐</p>
-    <button class="btn btn-next show" onclick="goSelectScreen()" style="margin-top:1.2rem">Play Again 🔄</button>
-  </div>
+  <div class="overlay-card" id="overlay-card"></div>
 </div>
 
 <div class="wrap">
@@ -302,7 +322,8 @@ let playWords     = [];     // 10 shuffled words for this session
 let wordIndex     = 0;      // current word index (0–9)
 let earnedCount   = 0;      // words completed
 let wrongAttempts = 0;      // wrong drops for current word
-let hintUsed      = false;  // hint button used this word
+let hintCount     = 0;      // hint presses for current word
+let wordResults   = [];     // [{ word, wrong, hints }] for final screen
 let dragging      = null;   // mouse-drag tile
 let audioCtx      = null;
 
@@ -385,9 +406,10 @@ function goSelectScreen() {
 // ── Game start ─────────────────────────────────────────────────
 function startGame(list) {
   currentList  = list;
-  playWords    = shuffle(list.words).slice(0, 10);
+  playWords    = shuffle(list.words);
   wordIndex    = 0;
   earnedCount  = 0;
+  wordResults  = [];
 
   document.getElementById('screen-select').style.display = 'none';
   document.getElementById('screen-game').style.display   = 'block';
@@ -412,7 +434,7 @@ function renderProgress() {
 function loadWord(idx) {
   const word = playWords[idx];
   wrongAttempts = 0;
-  hintUsed = false;
+  hintCount = 0;
   selected = null;
   dragging = null;
 
@@ -574,6 +596,8 @@ function revealFirstLetter() {
 
 // ── Hint button: reveal 2 letters ─────────────────────────────
 function showHint() {
+  hintCount++;
+
   const slots = shuffle(
     [...document.querySelectorAll('.slot')].filter(s =>
       !s.classList.contains('correct') && !s.classList.contains('hinted')
@@ -585,11 +609,11 @@ function showHint() {
     slot.textContent = letter;
     slot.classList.add('hinted');
 
+    // Remove the first matching tile from bank
     const tile = [...document.querySelectorAll('.tile')].find(t => t.dataset.letter === letter);
     if (tile) tile.remove();
   });
 
-  // Check done
   const allSlots = [...document.querySelectorAll('.slot')];
   const allDone  = allSlots.every(s => s.classList.contains('correct') || s.classList.contains('hinted'));
   if (allDone) setTimeout(onWordDone, 360);
@@ -597,19 +621,68 @@ function showHint() {
 
 // ── Word done ──────────────────────────────────────────────────
 function onWordDone() {
+  // Save this word's result
+  wordResults.push({ word: playWords[wordIndex], wrong: wrongAttempts, hints: hintCount });
+
   earnedCount = wordIndex + 1;
   renderProgress();
   sndWin();
   confetti(40);
 
   if (wordIndex >= playWords.length - 1) {
-    setTimeout(() => {
-      document.getElementById('overlay').classList.add('show');
-      confetti(80);
-    }, 900);
+    setTimeout(showFinalScreen, 900);
   } else {
     document.getElementById('next-btn').classList.add('show');
   }
+}
+
+// ── Final celebration screen ───────────────────────────────────
+function showFinalScreen() {
+  confetti(90);
+
+  const perfect = wordResults.filter(r => r.wrong === 0 && r.hints === 0);
+  const review  = wordResults.filter(r => r.wrong > 0  || r.hints > 0);
+
+  function heartBar(wrong) {
+    const lost = Math.min(wrong, 3);
+    return '❤️'.repeat(3 - lost) + '🖤'.repeat(lost);
+  }
+
+  function wordCard(r, cls) {
+    const hintBadge = r.hints > 0 ? `<span class="wrc-hint">💡×${r.hints}</span>` : '';
+    return `
+      <div class="word-result-card ${cls}">
+        <span class="wrc-word">${r.word}</span>
+        <span class="wrc-hearts">${heartBar(r.wrong)}</span>
+        ${hintBadge}
+      </div>`;
+  }
+
+  const perfectHTML = perfect.length
+    ? `<div class="result-section section-perfect">
+        <h3>⭐ Perfect!</h3>
+        <div class="word-results-grid">${perfect.map(r => wordCard(r,'perfect')).join('')}</div>
+       </div>` : '';
+
+  const reviewHTML = review.length
+    ? `<div class="result-section section-review">
+        <h3>💪 Practice more!</h3>
+        <div class="word-results-grid">${review.map(r => wordCard(r,'review')).join('')}</div>
+       </div>` : '';
+
+  document.getElementById('overlay-card').innerHTML = `
+    <div style="font-size:4rem;line-height:1.1">🏆🎉🌟</div>
+    <h2>You Did It!</h2>
+    <p style="color:#888;font-size:0.95rem;margin:0.2rem 0 0.8rem">
+      Finished all ${wordResults.length} words!
+    </p>
+    ${perfectHTML}
+    ${reviewHTML}
+    <button class="btn btn-next show" onclick="goSelectScreen()" style="margin-top:1.4rem;display:inline-flex">
+      Play Again 🔄
+    </button>
+  `;
+  document.getElementById('overlay').classList.add('show');
 }
 
 function nextWord() {
