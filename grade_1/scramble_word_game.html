@@ -70,6 +70,27 @@
     .list-card .lc-name { font-weight: 800; font-size: 1rem; color: #333; }
     .list-card .lc-count { font-size: 0.8rem; color: #888; margin-top: 0.2rem; }
 
+    /* ── SCREEN: Count picker ── */
+    #screen-count { width: 100%; display: none; }
+    .count-card {
+      background: white; border-radius: 24px; padding: 1.6rem 1.4rem;
+      text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+    }
+    .count-card h2 { font-family: 'Fredoka One', cursive; font-size: 1.6rem; color: #333; margin-bottom: 0.3rem; }
+    .count-card p  { color: #888; font-size: 0.9rem; margin-bottom: 1.1rem; }
+    .count-options { display: flex; flex-wrap: wrap; gap: 0.7rem; justify-content: center; }
+    .count-opt {
+      padding: 0.75rem 1.4rem; border-radius: 50px; border: none;
+      font-family: 'Nunito', sans-serif; font-size: 1.1rem; font-weight: 800;
+      cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      color: white;
+    }
+    .count-opt:hover  { transform: translateY(-3px); box-shadow: 0 8px 18px rgba(0,0,0,0.2); }
+    .count-opt:active { transform: translateY(0); }
+    .count-opt.all    { background: linear-gradient(135deg,#f59f00,#f76707); font-size: 1.15rem; padding: 0.85rem 2rem; }
+    .count-back { margin-top: 1rem; background: none; border: none; color: #aaa; font-size: 0.9rem; font-weight: 700; cursor: pointer; text-decoration: underline; }
+
     /* ── SCREEN: Game ── */
     #screen-game { width: 100%; display: none; }
 
@@ -263,6 +284,17 @@
     <div class="list-grid" id="list-grid"></div>
   </div>
 
+  <!-- ── Screen: Pick word count ── -->
+  <div id="screen-count">
+    <div class="count-card">
+      <h2 id="count-list-name"></h2>
+      <p id="count-list-sub"></p>
+      <div class="count-options" id="count-options"></div>
+      <br/>
+      <button class="count-back" onclick="goSelectScreen()">◀ Change list</button>
+    </div>
+  </div>
+
   <!-- ── Screen: Game ── -->
   <div id="screen-game">
     <div class="progress" id="progress"></div>
@@ -391,27 +423,62 @@ function buildSelectScreen() {
       <div class="lc-name">${list.name}</div>
       <div class="lc-count">${list.words.length} words</div>
     `;
-    card.onclick = () => startGame(list);
+    card.onclick = () => showCountPicker(list);
     grid.appendChild(card);
   });
 }
 
 function goSelectScreen() {
   document.getElementById('overlay').classList.remove('show');
-  document.getElementById('screen-game').style.display = 'none';
+  document.getElementById('screen-game').style.display  = 'none';
+  document.getElementById('screen-count').style.display = 'none';
   document.getElementById('screen-select').style.display = 'block';
   buildSelectScreen();
 }
 
+// ── Count picker ───────────────────────────────────────────────
+function showCountPicker(list) {
+  currentList = list;
+  document.getElementById('screen-select').style.display = 'none';
+  document.getElementById('screen-count').style.display  = 'block';
+
+  document.getElementById('count-list-name').textContent = `${list.emoji || '📝'} ${list.name}`;
+  document.getElementById('count-list-sub').textContent  = `How many words do you want to play?`;
+
+  const total = list.words.length;
+  const opts  = document.getElementById('count-options');
+  opts.innerHTML = '';
+
+  // Offer steps of 5 up to total-1, then "All"
+  const steps = [];
+  for (let n = 5; n < total; n += 5) steps.push(n);
+
+  const COLORS = ['#74b9ff','#a29bfe','#55efc4','#fd79a8'];
+  steps.forEach((n, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'count-opt';
+    btn.style.background = `linear-gradient(135deg,${COLORS[i % COLORS.length]},${COLORS[(i+1) % COLORS.length]})`;
+    btn.textContent = `${n} words`;
+    btn.onclick = () => startGame(n);
+    opts.appendChild(btn);
+  });
+
+  // "All" button
+  const allBtn = document.createElement('button');
+  allBtn.className = 'count-opt all';
+  allBtn.textContent = `All ${total} words 🌟`;
+  allBtn.onclick = () => startGame(total);
+  opts.appendChild(allBtn);
+}
+
 // ── Game start ─────────────────────────────────────────────────
-function startGame(list) {
-  currentList  = list;
-  playWords    = shuffle(list.words);
+function startGame(count) {
+  playWords    = shuffle(currentList.words).slice(0, count);
   wordIndex    = 0;
   earnedCount  = 0;
   wordResults  = [];
 
-  document.getElementById('screen-select').style.display = 'none';
+  document.getElementById('screen-count').style.display = 'none';
   document.getElementById('screen-game').style.display   = 'block';
 
   renderProgress();
