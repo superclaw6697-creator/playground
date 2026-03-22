@@ -303,7 +303,6 @@ let wordIndex     = 0;      // current word index (0–9)
 let earnedCount   = 0;      // words completed
 let wrongAttempts = 0;      // wrong drops for current word
 let hintUsed      = false;  // hint button used this word
-let selected      = null;   // selected tile element
 let dragging      = null;   // mouse-drag tile
 let audioCtx      = null;
 
@@ -462,20 +461,50 @@ function makeTile(letter, colorIdx) {
   t.draggable = true;
   t.addEventListener('dragstart', e => { e.dataTransfer.setData('text', letter); dragging = t; setTimeout(() => t.classList.add('ghost'), 0); });
   t.addEventListener('dragend',   () => { t.classList.remove('ghost'); dragging = null; });
-  t.addEventListener('click', () => {
-    if (selected === t) { deselect(); return; }
-    deselect();
-    selected = t;
-    t.classList.add('selected');
-  });
+  t.addEventListener('click', () => tapAutoPlace(t));
   t.addEventListener('touchstart', onTouchStart, { passive: false });
   t.addEventListener('touchmove',  onTouchMove,  { passive: false });
   t.addEventListener('touchend',   onTouchEnd,   { passive: false });
   return t;
 }
 
-function deselect() {
-  if (selected) { selected.classList.remove('selected'); selected = null; }
+// ── Tap: fly tile to next empty slot ──────────────────────────
+function tapAutoPlace(tile) {
+  const slots = [...document.querySelectorAll('.slot')];
+  const target = slots.find(s => !s.classList.contains('correct') && !s.classList.contains('hinted'));
+  if (!target) return;
+
+  const tRect = tile.getBoundingClientRect();
+  const sRect = target.getBoundingClientRect();
+
+  // Flying clone
+  const clone = tile.cloneNode(true);
+  clone.style.cssText = `
+    position:fixed;
+    left:${tRect.left}px;top:${tRect.top}px;
+    width:${tRect.width}px;height:${tRect.height}px;
+    z-index:500;pointer-events:none;margin:0;
+    animation:none;
+    transition:left 0.22s cubic-bezier(.4,0,.2,1),top 0.22s cubic-bezier(.4,0,.2,1),transform 0.22s;
+    transform:scale(1.15);
+  `;
+  document.body.appendChild(clone);
+  tile.style.opacity = '0.25';
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    clone.style.left = (sRect.left + (sRect.width  - tRect.width)  / 2) + 'px';
+    clone.style.top  = (sRect.top  + (sRect.height - tRect.height) / 2) + 'px';
+    clone.style.transform = 'scale(0.95)';
+  }));
+
+  setTimeout(() => {
+    clone.remove();
+    const correct = tile.dataset.letter === target.dataset.letter;
+    dragging = tile;
+    tryPlace(target);
+    dragging = null;
+    if (!correct) tile.style.opacity = ''; // restore on wrong
+  }, 240);
 }
 
 // ── Hearts ─────────────────────────────────────────────────────
@@ -488,7 +517,7 @@ function renderHearts() {
 
 // ── Try place ─────────────────────────────────────────────────
 function tryPlace(slot) {
-  const tile = dragging || selected;
+  const tile = dragging;
   if (!tile || slot.classList.contains('correct') || slot.classList.contains('hinted')) return;
 
   const tileLetter = tile.dataset.letter;
@@ -521,7 +550,6 @@ function tryPlace(slot) {
     }
   }
 
-  deselect();
   dragging = null;
 }
 
