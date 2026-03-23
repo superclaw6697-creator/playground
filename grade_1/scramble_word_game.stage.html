@@ -709,7 +709,7 @@ function onWordDone() {
   confetti(40);
 
   // Speak the word after a short delay (let the win sound play first)
-  setTimeout(() => speakWord(playWords[wordIndex]), 150);
+  setTimeout(() => speakWord(playWords[wordIndex]), 300);
 
   if (wordIndex >= playWords.length - 1) {
     setTimeout(showFinalScreen, 900);
