@@ -194,12 +194,16 @@
     .btn-back   { background: #dee2e6; color: #495057; }
     .btn-replay {
       background: linear-gradient(135deg, #74b9ff, #0984e3);
-      color: white; font-size: 1.3rem; padding: 0.55rem 1rem;
+      color: white; font-size: 1.1rem; padding: 0.4rem 0.7rem;
       line-height: 1; display: none;
+      position: absolute; top: 0; right: -3rem;
+      border-radius: 50%; width: 2.4rem; height: 2.4rem;
+      align-items: center; justify-content: center;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.2);
     }
-    .btn-replay.show { display: inline-flex; align-items: center; }
+    .btn-replay.show { display: inline-flex; }
     .btn-replay.playing { animation: speakerPulse 0.6s ease-in-out infinite; }
-    @keyframes speakerPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.18)} }
+    @keyframes speakerPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.25)} }
     .btn-next   {
       background: linear-gradient(135deg, var(--green), var(--green2));
       color: white; font-size: 1.05rem; padding: 0.75rem 2rem;
@@ -318,7 +322,10 @@
         </div>
       </div>
 
-      <span class="word-emoji" id="word-emoji">⭐</span>
+      <div style="position:relative;display:inline-block">
+        <span class="word-emoji" id="word-emoji">⭐</span>
+        <button class="btn btn-replay" id="replay-btn" onclick="replayWord()">🔊</button>
+      </div>
       <div class="hint-display" id="hint-display"></div>
 
       <div class="slots-wrap" id="slots"></div>
@@ -327,7 +334,6 @@
       <div class="letter-bank" id="bank"></div>
 
       <div class="btn-row">
-        <button class="btn btn-replay" id="replay-btn" onclick="replayWord()">🔊</button>
         <button class="btn btn-hint" onclick="showHint()">💡 Hint (2 letters)</button>
         <button class="btn btn-next" id="next-btn" onclick="nextWord()">Next ➡️</button>
       </div>
