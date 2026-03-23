@@ -687,6 +687,17 @@ function showHint() {
   if (allDone) setTimeout(onWordDone, 360);
 }
 
+// ── Text-to-speech ─────────────────────────────────────────────
+function speakWord(word) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(word);
+  utter.lang  = 'en-US';
+  utter.rate  = 0.85;
+  utter.pitch = 1.1;
+  window.speechSynthesis.speak(utter);
+}
+
 // ── Word done ──────────────────────────────────────────────────
 function onWordDone() {
   // Save this word's result
@@ -696,6 +707,9 @@ function onWordDone() {
   renderProgress();
   sndWin();
   confetti(40);
+
+  // Speak the word after a short delay (let the win sound play first)
+  setTimeout(() => speakWord(playWords[wordIndex]), 600);
 
   if (wordIndex >= playWords.length - 1) {
     setTimeout(showFinalScreen, 900);
