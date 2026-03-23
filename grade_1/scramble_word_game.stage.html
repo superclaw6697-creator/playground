@@ -758,27 +758,39 @@ function nextWord() {
   if (wordIndex < playWords.length) loadWord(wordIndex);
 }
 
-// ── Touch drag ─────────────────────────────────────────────────
-const ghost    = document.getElementById('touch-ghost');
-let touchTile  = null;
+// ── Touch drag / tap ───────────────────────────────────────────
+// Tap  = touchstart → touchend < 200 ms  → treated as click (tapAutoPlace)
+// Drag = touchstart → touchend ≥ 200 ms  → drop on slot under finger
+const ghost         = document.getElementById('touch-ghost');
+let touchTile       = null;
+let touchStartTime  = 0;
+let touchMoved      = false;
 
 function onTouchStart(e) {
   e.preventDefault();
-  touchTile = e.currentTarget;
-  dragging  = touchTile;
-  ghost.textContent    = touchTile.textContent;
-  ghost.style.background = touchTile.style.background;
-  ghost.style.display  = 'flex';
+  touchTile      = e.currentTarget;
+  touchStartTime = Date.now();
+  touchMoved     = false;
+  dragging       = touchTile;
+
   const t = e.touches[0];
-  ghost.style.left = t.clientX + 'px';
-  ghost.style.top  = t.clientY + 'px';
+  ghost.textContent      = touchTile.textContent;
+  ghost.style.background = touchTile.style.background;
+  ghost.style.left       = t.clientX + 'px';
+  ghost.style.top        = t.clientY + 'px';
+  // Don't show ghost yet — wait to see if it's a tap or drag
 }
+
 function onTouchMove(e) {
   e.preventDefault();
   if (!touchTile) return;
+  touchMoved = true;
+
   const t = e.touches[0];
-  ghost.style.left = t.clientX + 'px';
-  ghost.style.top  = t.clientY + 'px';
+  ghost.style.left    = t.clientX + 'px';
+  ghost.style.top     = t.clientY + 'px';
+  ghost.style.display = 'flex';   // show ghost only once dragging
+
   ghost.style.display = 'none';
   const under = document.elementFromPoint(t.clientX, t.clientY);
   ghost.style.display = 'flex';
@@ -786,17 +798,30 @@ function onTouchMove(e) {
   if (under?.classList.contains('slot') && !under.classList.contains('correct') && !under.classList.contains('hinted'))
     under.classList.add('over');
 }
+
 function onTouchEnd(e) {
   e.preventDefault();
   ghost.style.display = 'none';
-  if (!touchTile) return;
-  const t = e.changedTouches[0];
-  ghost.style.display = 'none';
-  const under = document.elementFromPoint(t.clientX, t.clientY);
   document.querySelectorAll('.slot').forEach(s => s.classList.remove('over'));
-  if (under?.classList.contains('slot')) tryPlace(under);
-  touchTile = null;
-  dragging  = null;
+
+  if (!touchTile) return;
+  const elapsed = Date.now() - touchStartTime;
+
+  if (!touchMoved && elapsed < 200) {
+    // Short tap → treat as click
+    const tile = touchTile;
+    touchTile = null;
+    dragging  = null;
+    tapAutoPlace(tile);
+  } else {
+    // Drag release → drop on slot under finger
+    const t = e.changedTouches[0];
+    ghost.style.display = 'none';
+    const under = document.elementFromPoint(t.clientX, t.clientY);
+    if (under?.classList.contains('slot')) tryPlace(under);
+    touchTile = null;
+    dragging  = null;
+  }
 }
 
 // ── Init ───────────────────────────────────────────────────────
