@@ -192,6 +192,14 @@
     .btn:active { transform: translateY(0); }
     .btn-hint   { background: var(--yellow); color: #5c3d00; }
     .btn-back   { background: #dee2e6; color: #495057; }
+    .btn-replay {
+      background: linear-gradient(135deg, #74b9ff, #0984e3);
+      color: white; font-size: 1.3rem; padding: 0.55rem 1rem;
+      line-height: 1; display: none;
+    }
+    .btn-replay.show { display: inline-flex; align-items: center; }
+    .btn-replay.playing { animation: speakerPulse 0.6s ease-in-out infinite; }
+    @keyframes speakerPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.18)} }
     .btn-next   {
       background: linear-gradient(135deg, var(--green), var(--green2));
       color: white; font-size: 1.05rem; padding: 0.75rem 2rem;
@@ -319,6 +327,7 @@
       <div class="letter-bank" id="bank"></div>
 
       <div class="btn-row">
+        <button class="btn btn-replay" id="replay-btn" onclick="replayWord()">🔊</button>
         <button class="btn btn-hint" onclick="showHint()">💡 Hint (2 letters)</button>
         <button class="btn btn-next" id="next-btn" onclick="nextWord()">Next ➡️</button>
       </div>
@@ -511,6 +520,7 @@ function loadWord(idx) {
   document.getElementById('hint-display').textContent = '';
   document.getElementById('hint-display').style.opacity = '1';
   document.getElementById('next-btn').classList.remove('show');
+  document.getElementById('replay-btn').classList.remove('show');
 
   renderHearts();
 
@@ -691,11 +701,18 @@ function showHint() {
 function speakWord(word) {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
+  const btn = document.getElementById('replay-btn');
   const utter = new SpeechSynthesisUtterance(word);
   utter.lang  = 'en-US';
   utter.rate  = 0.85;
   utter.pitch = 1.1;
+  utter.onstart = () => { if (btn) { btn.textContent = '🔉'; btn.classList.add('playing'); } };
+  utter.onend   = () => { if (btn) { btn.textContent = '🔊'; btn.classList.remove('playing'); } };
   window.speechSynthesis.speak(utter);
+}
+
+function replayWord() {
+  speakWord(playWords[wordIndex]);
 }
 
 // ── Word done ──────────────────────────────────────────────────
@@ -708,7 +725,8 @@ function onWordDone() {
   sndWin();
   confetti(40);
 
-  // Speak the word after a short delay (let the win sound play first)
+  // Show replay button and speak after short delay
+  document.getElementById('replay-btn').classList.add('show');
   setTimeout(() => speakWord(playWords[wordIndex]), 300);
 
   if (wordIndex >= playWords.length - 1) {
