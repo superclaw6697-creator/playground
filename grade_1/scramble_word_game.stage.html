@@ -761,16 +761,14 @@ function nextWord() {
 // ── Touch drag / tap ───────────────────────────────────────────
 // Tap  = touchstart → touchend < 200 ms  → treated as click (tapAutoPlace)
 // Drag = touchstart → touchend ≥ 200 ms  → drop on slot under finger
-const ghost         = document.getElementById('touch-ghost');
-let touchTile       = null;
-let touchStartTime  = 0;
-let touchMoved      = false;
+const ghost        = document.getElementById('touch-ghost');
+let touchTile      = null;
+let touchStartTime = 0;
 
 function onTouchStart(e) {
   e.preventDefault();
   touchTile      = e.currentTarget;
   touchStartTime = Date.now();
-  touchMoved     = false;
   dragging       = touchTile;
 
   const t = e.touches[0];
@@ -778,18 +776,15 @@ function onTouchStart(e) {
   ghost.style.background = touchTile.style.background;
   ghost.style.left       = t.clientX + 'px';
   ghost.style.top        = t.clientY + 'px';
-  // Don't show ghost yet — wait to see if it's a tap or drag
 }
 
 function onTouchMove(e) {
   e.preventDefault();
   if (!touchTile) return;
-  touchMoved = true;
-
   const t = e.touches[0];
   ghost.style.left    = t.clientX + 'px';
   ghost.style.top     = t.clientY + 'px';
-  ghost.style.display = 'flex';   // show ghost only once dragging
+  ghost.style.display = 'flex';
 
   ghost.style.display = 'none';
   const under = document.elementFromPoint(t.clientX, t.clientY);
@@ -803,20 +798,17 @@ function onTouchEnd(e) {
   e.preventDefault();
   ghost.style.display = 'none';
   document.querySelectorAll('.slot').forEach(s => s.classList.remove('over'));
-
   if (!touchTile) return;
-  const elapsed = Date.now() - touchStartTime;
 
-  if (!touchMoved && elapsed < 200) {
-    // Short tap → treat as click
+  if (Date.now() - touchStartTime < 200) {
+    // Tap → fly to next slot
     const tile = touchTile;
     touchTile = null;
     dragging  = null;
     tapAutoPlace(tile);
   } else {
-    // Drag release → drop on slot under finger
+    // Drag → drop on slot under finger
     const t = e.changedTouches[0];
-    ghost.style.display = 'none';
     const under = document.elementFromPoint(t.clientX, t.clientY);
     if (under?.classList.contains('slot')) tryPlace(under);
     touchTile = null;
