@@ -192,6 +192,18 @@
     .btn:active { transform: translateY(0); }
     .btn-hint   { background: var(--yellow); color: #5c3d00; }
     .btn-back   { background: #dee2e6; color: #495057; }
+    .btn-replay {
+      background: linear-gradient(135deg, #74b9ff, #0984e3);
+      color: white; font-size: 1.1rem; padding: 0.4rem 0.7rem;
+      line-height: 1; display: none;
+      position: absolute; top: 0; right: -3rem;
+      border-radius: 50%; width: 2.4rem; height: 2.4rem;
+      align-items: center; justify-content: center;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+    }
+    .btn-replay.show { display: inline-flex; }
+    .btn-replay.playing { animation: speakerPulse 0.6s ease-in-out infinite; }
+    @keyframes speakerPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.25)} }
     .btn-next   {
       background: linear-gradient(135deg, var(--green), var(--green2));
       color: white; font-size: 1.05rem; padding: 0.75rem 2rem;
@@ -309,7 +321,10 @@
         </div>
       </div>
 
-      <span class="word-emoji" id="word-emoji">⭐</span>
+      <div style="position:relative;display:inline-block">
+        <span class="word-emoji" id="word-emoji">⭐</span>
+        <button class="btn btn-replay" id="replay-btn" onclick="replayWord()">🔊</button>
+      </div>
       <div class="hint-display" id="hint-display"></div>
 
       <div class="slots-wrap" id="slots"></div>
@@ -326,18 +341,6 @@
 </div>
 
 <script>
-// ── Emoji set per word (fallback) ────────────────────────────
-const WORD_EMOJIS = {
-  // March26
-  shorts:'👖', books:'📚', baby:'👶', birthday:'🎂', boy:'👦',
-  brother:'👬', child:'🧒', children:'👧', daddy:'👨', father:'👴',
-  friend:'🤝', girl:'👧', grandfather:'👴', grandmother:'👵',
-  man:'🧑', men:'👨‍👨', mother:'👩', mummy:'🤱', sister:'👯',
-  // Week12
-  difficult:'🤔', different:'🦋', hockey:'🏒', unicycle:'🎪',
-  rocket:'🚀', basketball:'🏀', bounce:'⚡', insect:'🐛',
-  baseball:'⚾', paint:'🎨',
-};
 
 const TILE_PALETTE = [
   ['#FF6B6B','#ee5a24'],['#fdcb6e','#e17055'],['#6c5ce7','#a29bfe'],
@@ -499,17 +502,18 @@ function renderProgress() {
 
 // ── Load word ──────────────────────────────────────────────────
 function loadWord(idx) {
-  const word = playWords[idx];
+  const { word, emoji } = playWords[idx];
   wrongAttempts = 0;
   hintCount = 0;
   selected = null;
   dragging = null;
 
   document.getElementById('level-badge').textContent = `Word ${idx + 1} / ${playWords.length}`;
-  document.getElementById('word-emoji').textContent  = WORD_EMOJIS[word] || '📝';
+  document.getElementById('word-emoji').textContent  = emoji || '📝';
   document.getElementById('hint-display').textContent = '';
   document.getElementById('hint-display').style.opacity = '1';
   document.getElementById('next-btn').classList.remove('show');
+  document.getElementById('replay-btn').classList.remove('show');
 
   renderHearts();
 
@@ -686,15 +690,38 @@ function showHint() {
   if (allDone) setTimeout(onWordDone, 360);
 }
 
+// ── Text-to-speech ─────────────────────────────────────────────
+function speakWord(word) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const btn = document.getElementById('replay-btn');
+  const utter = new SpeechSynthesisUtterance(word);
+  utter.lang  = 'en-US';
+  utter.rate  = 0.85;
+  utter.pitch = 1.1;
+  utter.onstart = () => { if (btn) { btn.textContent = '🔉'; btn.classList.add('playing'); } };
+  utter.onend   = () => { if (btn) { btn.textContent = '🔊'; btn.classList.remove('playing'); } };
+  window.speechSynthesis.speak(utter);
+}
+
+function replayWord() {
+  speakWord(playWords[wordIndex].word);
+}
+
 // ── Word done ──────────────────────────────────────────────────
 function onWordDone() {
+  const { word } = playWords[wordIndex];
   // Save this word's result
-  wordResults.push({ word: playWords[wordIndex], wrong: wrongAttempts, hints: hintCount });
+  wordResults.push({ word, wrong: wrongAttempts, hints: hintCount });
 
   earnedCount = wordIndex + 1;
   renderProgress();
   sndWin();
   confetti(40);
+
+  // Show replay button and speak after short delay
+  document.getElementById('replay-btn').classList.add('show');
+  setTimeout(() => speakWord(word), 300);
 
   if (wordIndex >= playWords.length - 1) {
     setTimeout(showFinalScreen, 900);
