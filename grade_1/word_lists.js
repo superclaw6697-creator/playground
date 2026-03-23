@@ -7,7 +7,7 @@ const WORD_LISTS = [
     name: "March 26",
     emoji: "🌸",
     words: [
-      { word: "shorts",      emoji: "👖" },
+      { word: "shorts",      emoji: "🩳" },
       { word: "books",       emoji: "📚" },
       { word: "baby",        emoji: "👶" },
       { word: "birthday",    emoji: "🎂" },
