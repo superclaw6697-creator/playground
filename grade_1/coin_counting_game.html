@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>🪙 Coin Counter</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --purple:  #667eea;
+      --purple2: #764ba2;
+      --green:   #51cf66;
+      --green2:  #2f9e44;
+      --red:     #ff4757;
+      --yellow:  #ffd43b;
+    }
+
+    html, body {
+      height: 100%; overflow: hidden;
+    }
+    body {
+      font-family: 'Nunito', sans-serif;
+      height: 100dvh;
+      background: linear-gradient(135deg, var(--purple) 0%, var(--purple2) 100%);
+      display: flex; flex-direction: column;
+    }
+
+    /* ── Floating BG ── */
+    .bg-emoji {
+      position: fixed; opacity: 0.08; pointer-events: none;
+      animation: floatUp linear infinite; z-index: 0;
+    }
+    @keyframes floatUp {
+      0%   { transform: translateY(105vh) rotate(0deg); }
+      100% { transform: translateY(-15vh) rotate(360deg); }
+    }
+
+    .wrap {
+      position: relative; z-index: 1;
+      flex: 1;
+      max-width: 480px; width: 100%; margin: 0 auto;
+      padding: 0.6rem 1rem 0.8rem;
+      display: flex; flex-direction: column; align-items: center; gap: 0.6rem;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    .header { width: 100%; text-align: center; color: white; }
+    .header h1 {
+      font-family: 'Fredoka One', cursive;
+      font-size: 1.9rem;
+      text-shadow: 2px 3px 6px rgba(0,0,0,0.25);
+    }
+    .header p { opacity: 0.85; font-size: 0.85rem; margin-top: 0.1rem; }
+    .game-active .header h1 { font-size: 1.4rem; }
+    .game-active .header p  { display: none; }
+
+    /* ── Progress ── */
+    #progress-wrap { width: 100%; display: none; }
+    .progress-bar {
+      width: 100%; height: 14px;
+      background: rgba(255,255,255,0.3);
+      border-radius: 99px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; background: var(--yellow);
+      border-radius: 99px; transition: width 0.5s ease;
+    }
+    .progress-label {
+      color: white; font-weight: 800; font-size: 0.9rem;
+      text-align: center; margin-top: 0.3rem;
+    }
+
+    /* ── Screens ── */
+    .screen { width: 100%; display: none; }
+    .screen.active { display: flex; flex-direction: column; align-items: center; gap: 0.7rem; }
+    #screen-game.active { flex: 1; overflow: hidden; gap: 0.55rem; }
+
+    /* ── Count picker ── */
+    .picker-card {
+      background: white; border-radius: 28px;
+      padding: 2rem 1.5rem; text-align: center;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.2); width: 100%;
+    }
+    .picker-card h2 {
+      font-family: 'Fredoka One', cursive;
+      font-size: 1.8rem; color: #333; margin-bottom: 0.3rem;
+    }
+    .picker-card p { color: #888; margin-bottom: 1.5rem; font-size: 0.95rem; }
+    .count-btns {
+      display: flex; flex-wrap: wrap; gap: 0.8rem; justify-content: center;
+    }
+    .count-btn {
+      width: 64px; height: 64px; border: none; border-radius: 18px;
+      background: linear-gradient(135deg, var(--purple), var(--purple2));
+      color: white; font-family: 'Fredoka One', cursive; font-size: 1.7rem;
+      cursor: pointer; box-shadow: 0 4px 14px rgba(102,126,234,0.45);
+      transition: transform 0.15s, box-shadow 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .count-btn:active { transform: scale(0.9); box-shadow: 0 2px 6px rgba(102,126,234,0.3); }
+
+    /* ── Bank screen ── */
+    .bank-card {
+      background: white; border-radius: 28px;
+      padding: 2rem 1.5rem 2.5rem; text-align: center;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.2); width: 100%;
+      cursor: pointer; user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .bank-card:active { filter: brightness(0.97); }
+    .bank-scene {
+      position: relative; display: inline-block; padding: 0.5rem 2rem 0 1rem;
+    }
+    .piggy-emoji {
+      font-size: 7rem; line-height: 1; display: block;
+      animation: piggyIdle 2s ease-in-out infinite;
+    }
+    .bank-card.shaking .piggy-emoji {
+      animation: piggyPour 0.7s ease forwards;
+    }
+    .hammer-anim {
+      position: absolute; top: -0.2rem; right: -0.8rem;
+      font-size: 2.6rem; line-height: 1;
+      transform-origin: 95% 5%;
+      animation: hammerSwing 2s ease-in-out infinite;
+    }
+    .bank-card.shaking .hammer-anim { animation: none; }
+    @keyframes hammerSwing {
+      0%, 100% { transform: rotate(-55deg); }
+      30%, 48% { transform: rotate(18deg); }
+      58%      { transform: rotate(-55deg); }
+    }
+    @keyframes piggyIdle {
+      0%, 100%  { transform: scale(1) rotate(0deg); }
+      33%, 42%  { transform: scale(0.91) rotate(-4deg) translateY(4px); }
+      52%       { transform: scale(1.05) rotate(2deg) translateY(-2px); }
+    }
+    @keyframes piggyPour {
+      0%   { transform: rotate(0deg) translateY(0); }
+      15%  { transform: rotate(-20deg) translateY(-6px); }
+      30%  { transform: rotate(20deg) translateY(-10px); }
+      45%  { transform: rotate(-15deg) translateY(-8px); }
+      60%  { transform: rotate(12deg) translateY(-4px); }
+      75%  { transform: rotate(-8deg) translateY(-2px); }
+      90%  { transform: rotate(5deg); }
+      100% { transform: rotate(0deg); }
+    }
+    .bank-hint {
+      margin-top: 1.1rem; font-size: 1.15rem; font-weight: 800; color: var(--purple);
+    }
+    .bank-sub { color: #aaa; font-size: 0.88rem; margin-top: 0.3rem; }
+
+    /* ── Game screen ── */
+    .coin-area {
+      position: relative;
+      background: rgba(255,255,255,0.15);
+      border: 2px dashed rgba(255,255,255,0.35);
+      border-radius: 20px;
+      flex: 1; width: 100%; min-height: 150px;
+      overflow: hidden;
+    }
+
+    /* ── Coins ── */
+    .coin {
+      position: absolute;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Fredoka One', cursive;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.35);
+      opacity: 0;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* 1元 — bronze */
+    .c1  {
+      width: 44px; height: 44px; font-size: 1rem; color: #5c2800;
+      background: radial-gradient(circle at 38% 32%, #e8a87c, #b87333 55%, #8b5a1e);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3), inset 0 -3px 0 rgba(0,0,0,0.2);
+    }
+    /* 5元 — gold */
+    .c5  {
+      width: 52px; height: 52px; font-size: 1.1rem; color: #5a3a00;
+      background: radial-gradient(circle at 38% 32%, #ffe57a, #d4af37 55%, #a07d18);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3), inset 0 -3px 0 rgba(0,0,0,0.2);
+    }
+    /* 10元 — silver */
+    .c10 {
+      width: 52px; height: 52px; font-size: 1.05rem; color: #333;
+      background: radial-gradient(circle at 38% 32%, #f0f0f0, #b0b0b0 55%, #787878);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3), inset 0 -3px 0 rgba(0,0,0,0.2);
+    }
+    /* 50元 — gold outer, silver center */
+    .c50 {
+      width: 64px; height: 64px; font-size: 1.15rem; color: #5a3a00;
+      background:
+        radial-gradient(circle at 50% 50%, #e8e8e8 30%, transparent 31%),
+        radial-gradient(circle at 38% 32%, #ffe57a, #d4af37 55%, #a07d18);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 -3px 0 rgba(0,0,0,0.2);
+    }
+
+    /* ── Question card ── */
+    .question-card {
+      background: white; border-radius: 16px;
+      padding: 0.65rem 1rem; text-align: center; width: 100%;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.13);
+    }
+    .question-text {
+      font-family: 'Fredoka One', cursive;
+      font-size: 1.15rem; color: #333;
+    }
+
+    /* ── Choices (horizontal 3-column) ── */
+    .choices { display: flex; flex-direction: row; gap: 0.5rem; width: 100%; }
+    .choice-btn {
+      flex: 1; min-width: 0;
+      border: 3px solid transparent; border-radius: 18px;
+      padding: 0.6rem 0.2rem 0.7rem;
+      background: white; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+      box-shadow: 0 5px 16px rgba(0,0,0,0.13);
+      transition: transform 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .choice-btn:not(:disabled):active { transform: scale(0.93); }
+    .choice-btn.correct {
+      background: linear-gradient(135deg, var(--green), var(--green2));
+      border-color: transparent;
+      box-shadow: 0 6px 20px rgba(47,158,68,0.45);
+    }
+    .choice-btn.correct .choice-name { color: rgba(255,255,255,0.85); }
+    .choice-btn.correct .choice-price-badge {
+      background: rgba(255,255,255,0.28); box-shadow: none;
+    }
+    .choice-btn.wrong {
+      background: linear-gradient(135deg, #ff6b6b, #e03131);
+      opacity: 0.7;
+    }
+    .choice-btn:disabled { cursor: not-allowed; }
+    .choice-emoji { font-size: 2rem; line-height: 1.1; }
+    .choice-name  { font-size: 0.68rem; color: #aaa; font-weight: 700; text-align: center; }
+    .choice-price-badge {
+      background: linear-gradient(135deg, var(--purple), var(--purple2));
+      color: white; border-radius: 9px;
+      padding: 0.22rem 0.55rem; margin-top: 0.1rem;
+      font-family: 'Fredoka One', cursive; font-size: 1.15rem;
+      box-shadow: 0 3px 8px rgba(102,126,234,0.45);
+    }
+
+    /* ── Overlay ── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55);
+      display: none; align-items: center; justify-content: center;
+      z-index: 100; padding: 1.5rem;
+    }
+    .overlay.show { display: flex; }
+    .overlay-card {
+      background: white; border-radius: 28px;
+      padding: 2rem 1.5rem; text-align: center;
+      max-width: 380px; width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .overlay-card h2 {
+      font-family: 'Fredoka One', cursive;
+      font-size: 2.1rem; color: #333; margin: 0.4rem 0 0.2rem;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      border: none; border-radius: 14px;
+      padding: 0.85rem 2.2rem;
+      font-family: 'Fredoka One', cursive; font-size: 1.2rem;
+      cursor: pointer; transition: transform 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active { transform: scale(0.95); }
+    .btn-purple {
+      background: linear-gradient(135deg, var(--purple), var(--purple2));
+      color: white;
+      box-shadow: 0 4px 14px rgba(102,126,234,0.45);
+    }
+
+    /* ── Confetti ── */
+    .confetti-piece {
+      position: fixed; border-radius: 2px; pointer-events: none; z-index: 200;
+      animation: confettiFall linear forwards;
+    }
+    @keyframes confettiFall {
+      0%   { opacity: 1; }
+      100% { opacity: 0; transform: translateY(100vh) rotate(720deg); }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <h1>🪙 Coin Counter</h1>
+    <p>Learn to count coins!</p>
+  </div>
+
+  <!-- Progress bar -->
+  <div id="progress-wrap">
+    <div class="progress-bar">
+      <div class="progress-fill" id="prog-fill" style="width:0%"></div>
+    </div>
+    <div class="progress-label" id="prog-label">Question 1 of 5</div>
+  </div>
+
+  <!-- Screen: Pick question count -->
+  <div id="screen-pick" class="screen active">
+    <div class="picker-card">
+      <h2>🎮 Ready to count?</h2>
+      <p>How many questions would you like?</p>
+      <div class="count-btns">
+        <button class="count-btn" onclick="startGame(5)">5</button>
+        <button class="count-btn" onclick="startGame(6)">6</button>
+        <button class="count-btn" onclick="startGame(7)">7</button>
+        <button class="count-btn" onclick="startGame(8)">8</button>
+        <button class="count-btn" onclick="startGame(9)">9</button>
+        <button class="count-btn" onclick="startGame(10)">10</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screen: Piggy bank -->
+  <div id="screen-bank" class="screen">
+    <div class="bank-card" id="bank-card" onclick="pourCoins()">
+      <div class="bank-scene">
+        <span class="hammer-anim">🔨</span>
+        <span class="piggy-emoji" id="piggy-emoji">🐷</span>
+      </div>
+      <div class="bank-hint">Tap to open!</div>
+      <div class="bank-sub">Your coins are inside... 🪙</div>
+    </div>
+  </div>
+
+  <!-- Screen: Game -->
+  <div id="screen-game" class="screen">
+    <div class="question-card">
+      <div class="question-text">🪙 What can I buy with my coins?</div>
+    </div>
+    <div class="choices" id="choices"></div>
+    <div class="coin-area" id="coin-area"></div>
+  </div>
+
+</div>
+
+<!-- Final overlay -->
+<div class="overlay" id="overlay">
+  <div class="overlay-card" id="overlay-card"></div>
+</div>
+
+<script>
+// ── Coin types ───────────────────────────────────────────────
+const COIN_TYPES = [
+  { value: 1,  cls: 'c1',  label: '1'  },
+  { value: 5,  cls: 'c5',  label: '5'  },
+  { value: 10, cls: 'c10', label: '10' },
+  { value: 50, cls: 'c50', label: '50' },
+];
+
+// ── Items pool ───────────────────────────────────────────────
+const ITEMS = [
+  {emoji:'🍬', name:'Candy'},      {emoji:'🧃', name:'Juice'},
+  {emoji:'🍪', name:'Cookie'},     {emoji:'🍦', name:'Ice cream'},
+  {emoji:'🍎', name:'Apple'},      {emoji:'✏️',  name:'Pencil'},
+  {emoji:'🎈', name:'Balloon'},    {emoji:'⭐',  name:'Sticker'},
+  {emoji:'🍰', name:'Cake'},       {emoji:'🚗',  name:'Toy car'},
+  {emoji:'📚', name:'Book'},       {emoji:'🎀',  name:'Ribbon'},
+  {emoji:'🧸', name:'Teddy bear'}, {emoji:'🖍️',  name:'Crayon'},
+  {emoji:'🍭', name:'Lollipop'},   {emoji:'🎯',  name:'Target'},
+];
+
+// ── State ────────────────────────────────────────────────────
+let totalQs   = 5;
+let qIndex    = 0;
+let questions = [];
+let score     = 0;
+let audioCtx  = null;
+
+// ── Drag state ───────────────────────────────────────────────
+let dragEl = null, dragArea = null, dragRot = 0, dragOffX = 0, dragOffY = 0;
+
+function clientToArea(e, area) {
+  const t = e.touches?.[0] || e.changedTouches?.[0] || e;
+  const r = area.getBoundingClientRect();
+  return { x: t.clientX - r.left, y: t.clientY - r.top };
+}
+function dragStart(e, el, area, rot) {
+  e.preventDefault();
+  dragEl = el; dragArea = area; dragRot = rot;
+  el.style.zIndex = '20';
+  el.getAnimations().forEach(a => a.cancel());
+  const p = clientToArea(e, area);
+  const sz = el.offsetWidth;
+  dragOffX = p.x - (parseFloat(el.style.left) + sz / 2);
+  dragOffY = p.y - (parseFloat(el.style.top)  + sz / 2);
+}
+function dragMove(e) {
+  if (!dragEl) return;
+  e.preventDefault();
+  const p  = clientToArea(e, dragArea);
+  const sz = dragEl.offsetWidth;
+  const cx = Math.max(sz/2, Math.min(dragArea.offsetWidth  - sz/2, p.x - dragOffX));
+  const cy = Math.max(sz/2, Math.min(dragArea.offsetHeight - sz/2, p.y - dragOffY));
+  dragEl.style.left      = (cx - sz/2) + 'px';
+  dragEl.style.top       = (cy - sz/2) + 'px';
+  dragEl.style.transform = `rotate(${dragRot}deg) scale(1.14)`;
+}
+function dragEnd() {
+  if (!dragEl) return;
+  const el = dragEl, rot = dragRot;
+  dragEl = null;
+  el.style.zIndex = '';
+  el.animate([
+    { transform: el.style.transform },
+    { transform: `rotate(${rot}deg) scale(1)` },
+  ], { duration: 200, easing: 'ease', fill: 'forwards' })
+    .addEventListener('finish', () => { el.style.transform = `rotate(${rot}deg)`; }, { once: true });
+}
+function initDrag() {
+  document.addEventListener('mousemove',  dragMove);
+  document.addEventListener('mouseup',    dragEnd);
+  document.addEventListener('touchmove',  dragMove, { passive: false });
+  document.addEventListener('touchend',   dragEnd);
+}
+
+// ── Audio (Web Audio API) ────────────────────────────────────
+function getCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function beep(freq, type, dur, vol = 0.3, delay = 0) {
+  try {
+    const ctx = getCtx();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, ctx.currentTime + delay);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
+    o.start(ctx.currentTime + delay);
+    o.stop(ctx.currentTime + delay + dur + 0.05);
+  } catch(e) {}
+}
+function sndPour() {
+  for (let i = 0; i < 10; i++) {
+    beep(700 + Math.random() * 700, 'triangle', 0.07, 0.18, i * 0.055);
+  }
+}
+function sndCorrect() {
+  [523, 659, 784, 1047].forEach((f, i) => beep(f, 'sine', 0.28, 0.42, i * 0.1));
+}
+function sndWrong() {
+  beep(280, 'sawtooth', 0.15, 0.3);
+  beep(200, 'sawtooth', 0.18, 0.25, 0.13);
+}
+
+// ── Utils ────────────────────────────────────────────────────
+function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ── Confetti ─────────────────────────────────────────────────
+function confetti(n) {
+  const colors = ['#ffd43b','#51cf66','#339af0','#ff6b6b','#cc5de8','#ff9f43','#20c997'];
+  for (let i = 0; i < n; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'confetti-piece';
+      const size = 7 + Math.random() * 8;
+      el.style.cssText = [
+        `left:${Math.random()*100}vw`,
+        `top:-12px`,
+        `width:${size}px`, `height:${size}px`,
+        `background:${colors[~~(Math.random()*colors.length)]}`,
+        `animation-duration:${1.4 + Math.random()*0.8}s`,
+        `animation-delay:${Math.random()*0.4}s`,
+        `transform:rotate(${Math.random()*360}deg)`,
+      ].join(';');
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 2600);
+    }, i * 18);
+  }
+}
+
+// ── Floating BG ──────────────────────────────────────────────
+function spawnBg() {
+  ['🪙','💰','⭐','🎉','🎈','💫','✨'].forEach(e => {
+    const el = document.createElement('div');
+    el.className = 'bg-emoji';
+    el.textContent = e;
+    el.style.cssText = `left:${Math.random()*100}vw;font-size:${1.4+Math.random()*1.8}rem;animation-duration:${9+Math.random()*11}s;animation-delay:-${Math.random()*14}s`;
+    document.body.appendChild(el);
+  });
+}
+
+// ── Question generation ──────────────────────────────────────
+function getDifficulty(idx, total) {
+  const pct = idx / total;
+  if (pct < 0.35) return 0;   // easy: 1¢ + 5¢, 3 coins
+  if (pct < 0.65) return 1;   // medium: +10¢, 4–5 coins
+  return 2;                   // hard: +50¢, 5–6 coins
+}
+
+function generateCoins(diff) {
+  let pool, count;
+  if (diff === 0)      { pool = [1, 5];        count = 3; }
+  else if (diff === 1) { pool = [1, 5, 10];    count = randInt(4, 5); }
+  else                 { pool = [1, 5, 10, 50]; count = randInt(5, 6); }
+  return Array.from({length: count}, () => pool[randInt(0, pool.length - 1)]);
+}
+
+function generateChoices(correct) {
+  const used = new Set([correct]);
+  const wrongs = [];
+  const step = correct >= 20 ? 10 : 5;
+  const candidates = [step, step*2, step*3, 1, 2, 3, step+1];
+  const pool = [...candidates.map(o => correct + o), ...candidates.map(o => correct - o)];
+  for (const w of shuffle(pool)) {
+    if (wrongs.length >= 2) break;
+    if (w > 0 && !used.has(w)) { wrongs.push(w); used.add(w); }
+  }
+  // fallback
+  while (wrongs.length < 2) {
+    let w = correct + (wrongs.length + 1) * 5;
+    while (used.has(w)) w += 5;
+    wrongs.push(w); used.add(w);
+  }
+  const items = shuffle(ITEMS).slice(0, 3);
+  return shuffle([correct, wrongs[0], wrongs[1]]).map((val, i) => ({
+    value: val, item: items[i], correct: val === correct,
+  }));
+}
+
+function buildQuestions(n) {
+  return Array.from({length: n}, (_, i) => {
+    const diff    = getDifficulty(i, n);
+    const coins   = generateCoins(diff);
+    const total   = coins.reduce((a, b) => a + b, 0);
+    const choices = generateChoices(total);
+    return { coins, total, choices };
+  });
+}
+
+// ── Game flow ────────────────────────────────────────────────
+function startGame(n) {
+  totalQs   = n;
+  qIndex    = 0;
+  score     = 0;
+  questions = buildQuestions(n);
+  document.body.classList.add('game-active');
+  document.getElementById('progress-wrap').style.display = 'block';
+  updateProgress();
+  showBankScreen();
+}
+
+function updateProgress() {
+  const pct = (qIndex / totalQs) * 100;
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-label').textContent = `Question ${qIndex + 1} of ${totalQs}`;
+}
+
+function showBankScreen() {
+  const card = document.getElementById('bank-card');
+  // Force reflow so animations restart cleanly
+  card.classList.remove('shaking');
+  void card.offsetWidth;
+  card.style.pointerEvents = 'auto';
+  showScreen('screen-bank');
+}
+
+function pourCoins() {
+  const card = document.getElementById('bank-card');
+  card.classList.add('shaking');
+  card.style.pointerEvents = 'none';
+  sndPour();
+  setTimeout(showGameScreen, 750);
+}
+
+function showGameScreen() {
+  const q = questions[qIndex];
+
+  // Build coin elements with physics-like scatter
+  const area = document.getElementById('coin-area');
+  area.innerHTML = '';
+  const areaW   = area.offsetWidth  || 340;
+  const areaH   = 210;
+  const placed  = [];
+  const coinSz  = v => v === 50 ? 64 : v === 1 ? 44 : 52;
+
+  // Place coins with overlap-avoidance
+  function placeOne(val) {
+    const r = coinSz(val) / 2;
+    const pad = 6;
+    let best = null, bestOver = Infinity;
+    for (let t = 0; t < 80; t++) {
+      const cx = pad + r + Math.random() * (areaW - 2*pad - 2*r);
+      const cy = pad + r + Math.random() * (areaH - 2*pad - 2*r);
+      const over = placed.reduce((s, p) => {
+        const d = Math.hypot(cx - p.cx, cy - p.cy);
+        const minD = (r + p.r) * 0.82;
+        return s + Math.max(0, minD - d);
+      }, 0);
+      if (over < bestOver) { bestOver = over; best = {cx, cy}; }
+      if (over === 0) break;
+    }
+    placed.push({ cx: best.cx, cy: best.cy, r });
+    return best;
+  }
+
+  shuffle(q.coins).forEach((val, i) => {
+    const ct   = COIN_TYPES.find(c => c.value === val);
+    const sz   = coinSz(val);
+    const rot  = randInt(-22, 22);
+    const pos  = placeOne(val);
+    const el   = document.createElement('div');
+    el.className = `coin ${ct.cls}`;
+    el.textContent = ct.label;
+    el.style.left = (pos.cx - sz/2) + 'px';
+    el.style.top  = (pos.cy - sz/2) + 'px';
+    area.appendChild(el);
+
+    // Pour-in animation: fall from above with random side spin
+    const spinFrom = rot + randInt(-40, 40);
+    setTimeout(() => {
+      const anim = el.animate([
+        { opacity: 0, transform: `translateY(-170px) rotate(${spinFrom}deg) scale(0.25)` },
+        { opacity: 1, transform: `rotate(${rot}deg) scale(1)` },
+      ], { duration: 500, easing: 'cubic-bezier(0.34,1.56,0.64,1)', fill: 'forwards' });
+
+      // After landing: lock state as inline, cancel fill so WAAPI wobble can override freely
+      anim.addEventListener('finish', () => {
+        el.style.opacity   = '1';
+        el.style.transform = `rotate(${rot}deg)`;
+        anim.cancel();
+      });
+    }, 30 + i * 90);
+
+    // Drag
+    el.addEventListener('mousedown',  e => dragStart(e, el, area, rot));
+    el.addEventListener('touchstart', e => dragStart(e, el, area, rot), { passive: false });
+  });
+
+  // Build choice buttons (horizontal cards)
+  const choicesEl = document.getElementById('choices');
+  choicesEl.innerHTML = '';
+  q.choices.forEach(choice => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.dataset.correct = choice.correct ? 'true' : 'false';
+    btn.innerHTML = `
+      <span class="choice-emoji">${choice.item.emoji}</span>
+      <span class="choice-name">${choice.item.name}</span>
+      <span class="choice-price-badge">$${choice.value}</span>`;
+    btn.addEventListener('click', () => handleChoice(btn, choice.correct));
+    choicesEl.appendChild(btn);
+  });
+
+  showScreen('screen-game');
+}
+
+function handleChoice(btn, isCorrect) {
+  // Lock all buttons
+  document.querySelectorAll('.choice-btn').forEach(b => b.disabled = true);
+
+  if (isCorrect) {
+    btn.classList.add('correct');
+    score++;
+    sndCorrect();
+    confetti(35);
+    setTimeout(nextQuestion, 1300);
+  } else {
+    btn.classList.add('wrong');
+    sndWrong();
+    // Reveal correct answer
+    document.querySelectorAll('.choice-btn[data-correct="true"]')
+      .forEach(b => b.classList.add('correct'));
+    setTimeout(nextQuestion, 1700);
+  }
+}
+
+function nextQuestion() {
+  qIndex++;
+  if (qIndex >= totalQs) {
+    showFinal();
+  } else {
+    updateProgress();
+    showBankScreen();
+  }
+}
+
+function showFinal() {
+  confetti(80);
+
+  const pct = Math.round((score / totalQs) * 100);
+  let stars, msg;
+  if (pct === 100)    { stars = '⭐⭐⭐'; msg = 'Perfect score! You\'re a coin expert!'; }
+  else if (pct >= 70) { stars = '⭐⭐';   msg = 'Great work! Keep practising!'; }
+  else                { stars = '⭐';     msg = 'Good try! Let\'s count again!'; }
+
+  document.getElementById('overlay-card').innerHTML = `
+    <div style="font-size:3.8rem;line-height:1">🏆</div>
+    <h2>You Did It!</h2>
+    <div style="font-size:2.6rem;margin:0.4rem 0">${stars}</div>
+    <p style="font-family:'Fredoka One',cursive;font-size:1.4rem;color:#333;margin:0.2rem 0">
+      ${score} / ${totalQs} correct
+    </p>
+    <p style="color:#888;font-size:0.95rem;margin-bottom:1.6rem">${msg}</p>
+    <button class="btn btn-purple" onclick="goHome()">Play Again 🔄</button>
+  `;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function goHome() {
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('progress-wrap').style.display = 'none';
+  document.body.classList.remove('game-active');
+  showScreen('screen-pick');
+}
+
+// ── Init ─────────────────────────────────────────────────────
+spawnBg();
+initDrag();
+</script>
+</body>
+</html>
