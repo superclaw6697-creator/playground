@@ -174,6 +174,31 @@
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
     }
+
+    /* ── Bills ── */
+    .bill {
+      position: absolute;
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Fredoka One', cursive;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.35);
+      opacity: 0;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      letter-spacing: 0.5px;
+    }
+    .b100 {
+      width: 88px; height: 46px; font-size: 1.1rem; color: white;
+      background: linear-gradient(135deg, #69db7c 0%, #2f9e44 100%);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.25);
+      border: 1.5px solid rgba(255,255,255,0.25);
+    }
+    .b500 {
+      width: 100px; height: 52px; font-size: 1.2rem; color: white;
+      background: linear-gradient(135deg, #ffa94d 0%, #d9480f 100%);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.25);
+      border: 1.5px solid rgba(255,255,255,0.25);
+    }
     /* 1元 — bronze */
     .c1  {
       width: 44px; height: 44px; font-size: 1rem; color: #5c2800;
@@ -355,12 +380,14 @@
 </div>
 
 <script>
-// ── Coin types ───────────────────────────────────────────────
-const COIN_TYPES = [
-  { value: 1,  cls: 'c1',  label: '1'  },
-  { value: 5,  cls: 'c5',  label: '5'  },
-  { value: 10, cls: 'c10', label: '10' },
-  { value: 50, cls: 'c50', label: '50' },
+// ── Money types (coins + bills) ──────────────────────────────
+const MONEY_TYPES = [
+  { value: 1,   kind: 'coin', cls: 'c1',   label: '1',    w: 44,  h: 44 },
+  { value: 5,   kind: 'coin', cls: 'c5',   label: '5',    w: 52,  h: 52 },
+  { value: 10,  kind: 'coin', cls: 'c10',  label: '10',   w: 52,  h: 52 },
+  { value: 50,  kind: 'coin', cls: 'c50',  label: '50',   w: 64,  h: 64 },
+  { value: 100, kind: 'bill', cls: 'b100', label: '$100', w: 88,  h: 46 },
+  { value: 500, kind: 'bill', cls: 'b500', label: '$500', w: 100, h: 52 },
 ];
 
 // ── Items pool ───────────────────────────────────────────────
@@ -395,21 +422,23 @@ function dragStart(e, el, area, rot) {
   dragEl = el; dragArea = area; dragRot = rot;
   el.style.zIndex = '20';
   el.getAnimations().forEach(a => a.cancel());
-  const p = clientToArea(e, area);
-  const sz = el.offsetWidth;
-  dragOffX = p.x - (parseFloat(el.style.left) + sz / 2);
-  dragOffY = p.y - (parseFloat(el.style.top)  + sz / 2);
+  const p  = clientToArea(e, area);
+  const hw = el.offsetWidth  / 2;
+  const hh = el.offsetHeight / 2;
+  dragOffX = p.x - (parseFloat(el.style.left) + hw);
+  dragOffY = p.y - (parseFloat(el.style.top)  + hh);
 }
 function dragMove(e) {
   if (!dragEl) return;
   e.preventDefault();
   const p  = clientToArea(e, dragArea);
-  const sz = dragEl.offsetWidth;
-  const cx = Math.max(sz/2, Math.min(dragArea.offsetWidth  - sz/2, p.x - dragOffX));
-  const cy = Math.max(sz/2, Math.min(dragArea.offsetHeight - sz/2, p.y - dragOffY));
-  dragEl.style.left      = (cx - sz/2) + 'px';
-  dragEl.style.top       = (cy - sz/2) + 'px';
-  dragEl.style.transform = `rotate(${dragRot}deg) scale(1.14)`;
+  const hw = dragEl.offsetWidth  / 2;
+  const hh = dragEl.offsetHeight / 2;
+  const cx = Math.max(hw, Math.min(dragArea.offsetWidth  - hw, p.x - dragOffX));
+  const cy = Math.max(hh, Math.min(dragArea.offsetHeight - hh, p.y - dragOffY));
+  dragEl.style.left      = (cx - hw) + 'px';
+  dragEl.style.top       = (cy - hh) + 'px';
+  dragEl.style.transform = `rotate(${dragRot}deg) scale(1.12)`;
 }
 function dragEnd() {
   if (!dragEl) return;
@@ -509,35 +538,35 @@ function spawnBg() {
 }
 
 // ── Question generation ──────────────────────────────────────
-function getDifficulty(idx, total) {
+// Pool expands as questions progress; count grows by 1 each question
+function getPool(idx, total) {
   const pct = idx / total;
-  if (pct < 0.35) return 0;   // easy: 1¢ + 5¢, 3 coins
-  if (pct < 0.65) return 1;   // medium: +10¢, 4–5 coins
-  return 2;                   // hard: +50¢, 5–6 coins
+  if (pct < 0.25) return [1, 5];
+  if (pct < 0.50) return [1, 5, 10, 50];
+  if (pct < 0.75) return [10, 50, 100];       // bills appear
+  return [50, 100, 500];                       // big bills
 }
+function getCount(idx) { return Math.min(2 + idx, 7); }
 
-function generateCoins(diff) {
-  let pool, count;
-  if (diff === 0)      { pool = [1, 5];        count = 3; }
-  else if (diff === 1) { pool = [1, 5, 10];    count = randInt(4, 5); }
-  else                 { pool = [1, 5, 10, 50]; count = randInt(5, 6); }
+function generateItems(idx, total) {
+  const pool  = getPool(idx, total);
+  const count = getCount(idx);
   return Array.from({length: count}, () => pool[randInt(0, pool.length - 1)]);
 }
 
 function generateChoices(correct) {
   const used = new Set([correct]);
   const wrongs = [];
-  const step = correct >= 20 ? 10 : 5;
-  const candidates = [step, step*2, step*3, 1, 2, 3, step+1];
+  const step = correct >= 500 ? 100 : correct >= 100 ? 50 : correct >= 20 ? 10 : 5;
+  const candidates = [step, step*2, step*3, Math.round(step*1.5), step*4];
   const pool = [...candidates.map(o => correct + o), ...candidates.map(o => correct - o)];
   for (const w of shuffle(pool)) {
     if (wrongs.length >= 2) break;
     if (w > 0 && !used.has(w)) { wrongs.push(w); used.add(w); }
   }
-  // fallback
   while (wrongs.length < 2) {
-    let w = correct + (wrongs.length + 1) * 5;
-    while (used.has(w)) w += 5;
+    let w = correct + (wrongs.length + 1) * step;
+    while (used.has(w)) w += step;
     wrongs.push(w); used.add(w);
   }
   const items = shuffle(ITEMS).slice(0, 3);
@@ -548,11 +577,10 @@ function generateChoices(correct) {
 
 function buildQuestions(n) {
   return Array.from({length: n}, (_, i) => {
-    const diff    = getDifficulty(i, n);
-    const coins   = generateCoins(diff);
-    const total   = coins.reduce((a, b) => a + b, 0);
+    const items   = generateItems(i, n);
+    const total   = items.reduce((a, b) => a + b, 0);
     const choices = generateChoices(total);
-    return { coins, total, choices };
+    return { items, total, choices };
   });
 }
 
@@ -594,55 +622,52 @@ function pourCoins() {
 function showGameScreen() {
   const q = questions[qIndex];
 
-  // Build coin elements with physics-like scatter
-  const area = document.getElementById('coin-area');
+  // Build money elements (coins + bills) with physics-like scatter
+  const area  = document.getElementById('coin-area');
   area.innerHTML = '';
-  const areaW   = area.offsetWidth  || 340;
-  const areaH   = 210;
-  const placed  = [];
-  const coinSz  = v => v === 50 ? 64 : v === 1 ? 44 : 52;
+  const areaW  = area.offsetWidth  || 340;
+  const areaH  = area.offsetHeight || 220;
+  const placed = [];
 
-  // Place coins with overlap-avoidance
-  function placeOne(val) {
-    const r = coinSz(val) / 2;
+  // Bounding-box overlap-avoidance placement
+  function placeOne(w, h) {
     const pad = 6;
     let best = null, bestOver = Infinity;
-    for (let t = 0; t < 80; t++) {
-      const cx = pad + r + Math.random() * (areaW - 2*pad - 2*r);
-      const cy = pad + r + Math.random() * (areaH - 2*pad - 2*r);
+    for (let t = 0; t < 90; t++) {
+      const cx = pad + w/2 + Math.random() * Math.max(1, areaW - 2*pad - w);
+      const cy = pad + h/2 + Math.random() * Math.max(1, areaH - 2*pad - h);
       const over = placed.reduce((s, p) => {
-        const d = Math.hypot(cx - p.cx, cy - p.cy);
-        const minD = (r + p.r) * 0.82;
-        return s + Math.max(0, minD - d);
+        const ox = Math.max(0, (w/2 + p.w/2) * 0.80 - Math.abs(cx - p.cx));
+        const oy = Math.max(0, (h/2 + p.h/2) * 0.80 - Math.abs(cy - p.cy));
+        return s + ox * oy;
       }, 0);
       if (over < bestOver) { bestOver = over; best = {cx, cy}; }
       if (over === 0) break;
     }
-    placed.push({ cx: best.cx, cy: best.cy, r });
+    placed.push({ cx: best.cx, cy: best.cy, w, h });
     return best;
   }
 
-  shuffle(q.coins).forEach((val, i) => {
-    const ct   = COIN_TYPES.find(c => c.value === val);
-    const sz   = coinSz(val);
-    const rot  = randInt(-22, 22);
-    const pos  = placeOne(val);
-    const el   = document.createElement('div');
-    el.className = `coin ${ct.cls}`;
-    el.textContent = ct.label;
-    el.style.left = (pos.cx - sz/2) + 'px';
-    el.style.top  = (pos.cy - sz/2) + 'px';
+  shuffle(q.items).forEach((val, i) => {
+    const mt  = MONEY_TYPES.find(m => m.value === val);
+    const rot = mt.kind === 'bill' ? randInt(-8, 8) : randInt(-22, 22);
+    const pos = placeOne(mt.w, mt.h);
+    const el  = document.createElement('div');
+    el.className   = `${mt.kind} ${mt.cls}`;
+    el.textContent = mt.label;
+    el.style.left  = (pos.cx - mt.w/2) + 'px';
+    el.style.top   = (pos.cy - mt.h/2) + 'px';
     area.appendChild(el);
 
-    // Pour-in animation: fall from above with random side spin
-    const spinFrom = rot + randInt(-40, 40);
+    // Pour-in: coins spin, bills flutter horizontally
+    const spinFrom = mt.kind === 'bill'
+      ? `translateX(${randInt(-40,40)}px) rotate(${rot + randInt(-20,20)}deg) scale(0.3)`
+      : `translateY(-180px) rotate(${rot + randInt(-50,50)}deg) scale(0.25)`;
     setTimeout(() => {
       const anim = el.animate([
-        { opacity: 0, transform: `translateY(-170px) rotate(${spinFrom}deg) scale(0.25)` },
+        { opacity: 0, transform: spinFrom },
         { opacity: 1, transform: `rotate(${rot}deg) scale(1)` },
-      ], { duration: 500, easing: 'cubic-bezier(0.34,1.56,0.64,1)', fill: 'forwards' });
-
-      // After landing: lock state as inline, cancel fill so WAAPI wobble can override freely
+      ], { duration: 480, easing: 'cubic-bezier(0.34,1.56,0.64,1)', fill: 'forwards' });
       anim.addEventListener('finish', () => {
         el.style.opacity   = '1';
         el.style.transform = `rotate(${rot}deg)`;
