@@ -3,41 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>🔊 Phonic Dictation</title>
+  <title>🖊️ Phonic Spelling</title>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet" />
   <script src="phonic_word_list.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --teal:   #20c997;
-      --teal2:  #0ca678;
-      --orange: #ff922b;
-      --yellow: #ffd43b;
-      --red:    #ff4757;
-      --purple: #845ef7;
+      --teal:  #20c997; --teal2: #0ca678;
+      --red:   #ff4757; --green: #51cf66; --green2: #2f9e44;
+      --orange:#ff922b; --purple:#845ef7; --yellow:#ffd43b;
     }
-
     body {
-      font-family: 'Nunito', sans-serif;
-      min-height: 100vh;
+      font-family: 'Nunito', sans-serif; min-height: 100vh;
       background: linear-gradient(135deg, #20c997 0%, #0ca678 100%);
       overflow-x: hidden;
     }
-
     .bg-emoji {
       position: fixed; opacity: 0.08; pointer-events: none;
-      animation: floatUp linear infinite; z-index: 0;
-      font-size: 2.5rem; user-select: none;
+      animation: floatUp linear infinite; z-index: 0; font-size: 2.5rem;
     }
-    @keyframes floatUp {
-      0%   { transform: translateY(110vh) rotate(0deg); }
-      100% { transform: translateY(-15vh) rotate(360deg); }
-    }
+    @keyframes floatUp { 0%{transform:translateY(110vh) rotate(0deg)} 100%{transform:translateY(-15vh) rotate(360deg)} }
 
     .wrap {
-      position: relative; z-index: 1;
-      max-width: 620px; margin: 0 auto;
+      position: relative; z-index: 1; max-width: 640px; margin: 0 auto;
       padding: 1rem 1rem 4rem;
       display: flex; flex-direction: column; align-items: center; gap: 0.9rem;
     }
@@ -46,26 +35,21 @@
     .header h1 { font-family: 'Fredoka One', cursive; font-size: 2.2rem; text-shadow: 2px 3px 6px rgba(0,0,0,0.2); }
     .header p  { opacity: 0.85; font-size: 0.9rem; margin-top: 0.15rem; }
 
-    /* ── List selection ── */
+    /* ── List ── */
     #screen-select { width: 100%; }
-    .list-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 1rem; margin-top: 0.5rem;
-    }
+    .list-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-top: 0.5rem; }
     .list-card {
       background: white; border-radius: 20px; padding: 1.4rem 1rem;
       text-align: center; cursor: pointer;
       box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-      transition: transform 0.18s, box-shadow 0.18s;
-      border: 3px solid transparent;
+      transition: transform 0.18s, box-shadow 0.18s; border: 3px solid transparent;
     }
-    .list-card:hover { transform: translateY(-5px); box-shadow: 0 14px 30px rgba(0,0,0,0.2); border-color: var(--yellow); }
+    .list-card:hover { transform: translateY(-5px); border-color: var(--yellow); }
     .list-card .lc-emoji { font-size: 2.8rem; display: block; margin-bottom: 0.4rem; }
     .list-card .lc-name  { font-weight: 800; font-size: 1rem; color: #333; }
     .list-card .lc-count { font-size: 0.8rem; color: #888; margin-top: 0.2rem; }
 
-    /* ── Count picker ── */
+    /* ── Count ── */
     #screen-count { width: 100%; display: none; }
     .count-card { background: white; border-radius: 24px; padding: 1.6rem 1.4rem; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
     .count-card h2 { font-family: 'Fredoka One', cursive; font-size: 1.6rem; color: #333; }
@@ -74,112 +58,150 @@
     .count-btn {
       padding: 0.55rem 1.2rem; border-radius: 50px; border: none;
       background: var(--teal); color: white;
-      font-family: 'Fredoka One', cursive; font-size: 1.1rem;
-      cursor: pointer; transition: transform 0.15s;
+      font-family: 'Fredoka One', cursive; font-size: 1.1rem; cursor: pointer; transition: transform 0.15s;
     }
     .count-btn:hover { transform: scale(1.08); }
 
-    /* ── Game screen ── */
-    #screen-game { width: 100%; display: none; flex-direction: column; gap: 0.9rem; }
-
+    /* ── Game ── */
+    #screen-game { width: 100%; display: none; flex-direction: column; gap: 0.8rem; }
     .prog-bar-wrap { width: 100%; background: rgba(255,255,255,0.25); border-radius: 50px; height: 10px; }
     .prog-bar { height: 10px; border-radius: 50px; background: white; transition: width 0.4s ease; }
     .prog-label { color: white; font-size: 0.85rem; text-align: right; margin-top: 0.2rem; }
 
-    /* main card */
     .game-card {
-      background: white; border-radius: 28px; padding: 2rem 1.6rem;
+      background: white; border-radius: 28px; padding: 1.6rem 1.4rem;
       width: 100%; text-align: center;
       box-shadow: 0 12px 36px rgba(0,0,0,0.15);
-      display: flex; flex-direction: column; align-items: center; gap: 1.2rem;
+      display: flex; flex-direction: column; align-items: center; gap: 1rem;
     }
 
-    .word-emoji { font-size: 5rem; line-height: 1; }
+    .word-emoji { font-size: 4.5rem; line-height: 1; }
 
-    /* listen button */
+    /* listen + speed */
+    .listen-row { display: flex; gap: 0.6rem; width: 100%; align-items: center; }
     .listen-btn {
-      display: inline-flex; align-items: center; gap: 0.6rem;
-      padding: 1rem 2.4rem; border-radius: 50px; border: none;
+      flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      padding: 0.85rem 1rem; border-radius: 50px; border: none;
       background: linear-gradient(135deg, var(--teal), var(--teal2));
-      color: white; font-family: 'Fredoka One', cursive; font-size: 1.5rem;
-      cursor: pointer; box-shadow: 0 6px 20px rgba(32,201,151,0.45);
-      transition: transform 0.15s; width: 100%;
+      color: white; font-family: 'Fredoka One', cursive; font-size: 1.2rem;
+      cursor: pointer; box-shadow: 0 5px 16px rgba(32,201,151,0.4); transition: transform 0.15s;
     }
-    .listen-btn:hover { transform: scale(1.03); }
+    .listen-btn:hover { transform: scale(1.04); }
     .listen-btn.speaking { animation: pulse 0.7s ease infinite alternate; }
     @keyframes pulse {
-      from { box-shadow: 0 6px 20px rgba(32,201,151,0.45); transform: scale(1); }
-      to   { box-shadow: 0 12px 32px rgba(32,201,151,0.7); transform: scale(1.04); }
+      from { box-shadow: 0 5px 16px rgba(32,201,151,0.4); transform: scale(1); }
+      to   { box-shadow: 0 10px 28px rgba(32,201,151,0.7); transform: scale(1.05); }
     }
 
-    /* speed control */
-    .speed-row {
-      width: 100%; display: flex; align-items: center; gap: 0.8rem;
-    }
-    .speed-label { font-size: 0.85rem; color: #868e96; white-space: nowrap; min-width: 52px; }
-    .speed-label span { font-weight: 800; color: #495057; }
+    .speed-wrap { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
+    .speed-lbl  { font-size: 0.72rem; color: #868e96; }
+    .speed-lbl span { font-weight: 800; color: #495057; }
     input[type=range] {
-      flex: 1; -webkit-appearance: none; appearance: none;
-      height: 6px; border-radius: 50px;
-      background: linear-gradient(to right, var(--teal) 0%, var(--teal) var(--pct, 50%), #dee2e6 var(--pct, 50%));
+      width: 72px; -webkit-appearance: none; appearance: none;
+      height: 5px; border-radius: 50px;
+      background: linear-gradient(to right, var(--teal) 0%, var(--teal) var(--pct,50%), #dee2e6 var(--pct,50%));
       outline: none; cursor: pointer;
     }
     input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 22px; height: 22px;
-      border-radius: 50%; background: var(--teal2);
-      box-shadow: 0 2px 8px rgba(12,166,120,0.4); cursor: pointer;
-    }
-    input[type=range]::-moz-range-thumb {
-      width: 22px; height: 22px; border: none;
-      border-radius: 50%; background: var(--teal2);
-      box-shadow: 0 2px 8px rgba(12,166,120,0.4); cursor: pointer;
+      -webkit-appearance: none; width: 18px; height: 18px;
+      border-radius: 50%; background: var(--teal2); cursor: pointer;
+      box-shadow: 0 1px 6px rgba(12,166,120,0.4);
     }
 
-    /* answer toggle */
-    .answer-wrap { width: 100%; }
-    .answer-toggle {
-      width: 100%; padding: 0.75rem; border-radius: 16px;
-      border: 2.5px dashed #ced4da; background: none;
-      font-family: 'Fredoka One', cursive; font-size: 1.1rem;
-      color: #adb5bd; cursor: pointer;
-      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    /* ── Draw canvas ── */
+    .canvas-wrap { width: 100%; position: relative; }
+    #draw-canvas {
+      width: 100%; aspect-ratio: 3/1.4; min-height: 130px; max-height: 200px;
+      border: 3px solid #dee2e6; border-radius: 18px;
+      background: white; cursor: crosshair; touch-action: none; display: block;
     }
-    .answer-toggle:hover  { border-color: var(--orange); color: var(--orange); }
-    .answer-toggle.shown  { border-color: var(--purple); background: #f3f0ff; color: var(--purple); border-style: solid; }
+    #draw-canvas.stroking { border-color: var(--purple); }
 
-    .answer-box {
-      margin-top: 0.7rem;
+    .canvas-hint {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      pointer-events: none; color: #ced4da;
+      font-family: 'Fredoka One', cursive; font-size: 1.3rem;
+    }
+
+    .canvas-btns { display: flex; gap: 0.6rem; width: 100%; margin-top: 0.3rem; }
+    .btn-clear {
+      padding: 0.6rem 1.2rem; border-radius: 50px; border: none;
+      background: #f1f3f5; color: #868e96;
+      font-family: 'Fredoka One', cursive; font-size: 1rem; cursor: pointer; transition: transform 0.15s;
+    }
+    .btn-clear:hover { transform: scale(1.05); background: #e9ecef; }
+    .btn-submit {
+      flex: 1; padding: 0.7rem 1.5rem; border-radius: 50px; border: none;
+      background: linear-gradient(135deg, var(--purple), #6741d9);
+      color: white; font-family: 'Fredoka One', cursive; font-size: 1.15rem;
+      cursor: pointer; box-shadow: 0 5px 16px rgba(132,94,247,0.4); transition: transform 0.15s;
+    }
+    .btn-submit:hover  { transform: scale(1.04); }
+    .btn-submit:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+    /* recognising spinner */
+    .recognising { display: none; align-items: center; gap: 0.5rem; color: #868e96; font-size: 0.9rem; }
+    .recognising.show { display: flex; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { width: 18px; height: 18px; border: 2px solid #dee2e6; border-top-color: var(--teal); border-radius: 50%; animation: spin 0.7s linear infinite; }
+
+    /* ── Result comparison ── */
+    #result-area { width: 100%; display: none; flex-direction: column; align-items: center; gap: 0.7rem; }
+    #result-area.show { display: flex; }
+
+    .result-label { font-size: 0.9rem; color: #868e96; }
+
+    .compare-row {
       display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem;
     }
-    .answer-letter {
-      width: 52px; height: 60px; border-radius: 14px;
-      background: linear-gradient(135deg, #f3f0ff, #e5dbff);
-      border: 2px solid #b197fc;
-      font-family: 'Fredoka One', cursive; font-size: 1.8rem;
-      color: var(--purple); display: flex; align-items: center; justify-content: center;
+
+    .cmp-cell {
+      display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+    }
+    /* expected letter (top) */
+    .cmp-expected {
+      width: 50px; height: 56px; border-radius: 12px;
+      font-family: 'Fredoka One', cursive; font-size: 1.6rem;
+      display: flex; align-items: center; justify-content: center;
       animation: popIn 0.2s ease both;
     }
-    .answer-letter:nth-child(1) { animation-delay: 0ms; }
-    .answer-letter:nth-child(2) { animation-delay: 40ms; }
-    .answer-letter:nth-child(3) { animation-delay: 80ms; }
-    .answer-letter:nth-child(4) { animation-delay: 120ms; }
-    .answer-letter:nth-child(5) { animation-delay: 160ms; }
-    .answer-letter:nth-child(6) { animation-delay: 200ms; }
-    .answer-letter:nth-child(7) { animation-delay: 240ms; }
-    .answer-letter:nth-child(8) { animation-delay: 280ms; }
-    @keyframes popIn { 0%{transform:scale(0.5);opacity:0}70%{transform:scale(1.15)}100%{transform:scale(1);opacity:1} }
+    .cmp-expected.ok   { background: #d3f9d8; color: var(--green2); border: 2.5px solid #8ce99a; }
+    .cmp-expected.bad  { background: #fff5f5; color: var(--red);    border: 2.5px solid #ffa8b4; }
+    .cmp-expected.miss { background: #fff9db; color: #e67700;       border: 2.5px dashed #ffd43b; }
 
-    /* next button */
-    .next-btn {
-      width: 100%; padding: 1rem; border-radius: 50px; border: none;
-      background: linear-gradient(135deg, var(--orange), #e8590c);
-      color: white; font-family: 'Fredoka One', cursive; font-size: 1.4rem;
-      cursor: pointer; box-shadow: 0 6px 20px rgba(255,146,43,0.45);
-      transition: transform 0.15s;
+    /* written letter (bottom) */
+    .cmp-written {
+      font-size: 0.78rem; font-weight: 800;
+      min-height: 1.1rem;
     }
-    .next-btn:hover { transform: scale(1.03); }
+    .cmp-written.ok   { color: var(--green2); }
+    .cmp-written.bad  { color: var(--red); text-decoration: line-through; }
+    .cmp-written.miss { color: #e67700; font-style: italic; }
 
-    /* ── Final screen ── */
+    .result-summary { font-family: 'Fredoka One', cursive; font-size: 1.15rem; }
+    .result-summary.perfect { color: var(--green2); }
+    .result-summary.partial { color: var(--orange); }
+
+    @keyframes popIn { 0%{transform:scale(0.5);opacity:0}70%{transform:scale(1.15)}100%{transform:scale(1);opacity:1} }
+    .cmp-cell:nth-child(1) .cmp-expected { animation-delay: 0ms; }
+    .cmp-cell:nth-child(2) .cmp-expected { animation-delay: 50ms; }
+    .cmp-cell:nth-child(3) .cmp-expected { animation-delay: 100ms; }
+    .cmp-cell:nth-child(4) .cmp-expected { animation-delay: 150ms; }
+    .cmp-cell:nth-child(5) .cmp-expected { animation-delay: 200ms; }
+    .cmp-cell:nth-child(6) .cmp-expected { animation-delay: 250ms; }
+    .cmp-cell:nth-child(7) .cmp-expected { animation-delay: 300ms; }
+    .cmp-cell:nth-child(8) .cmp-expected { animation-delay: 350ms; }
+
+    /* next btn */
+    .btn-next {
+      width: 100%; padding: 0.85rem; border-radius: 50px; border: none;
+      background: linear-gradient(135deg, var(--orange), #e8590c);
+      color: white; font-family: 'Fredoka One', cursive; font-size: 1.3rem;
+      cursor: pointer; box-shadow: 0 5px 16px rgba(255,146,43,0.4); transition: transform 0.15s;
+    }
+    .btn-next:hover { transform: scale(1.04); }
+
+    /* ── Final ── */
     #screen-final { width: 100%; display: none; text-align: center; }
     .final-card { background: white; border-radius: 28px; padding: 2.5rem 1.8rem; box-shadow: 0 12px 36px rgba(0,0,0,0.15); }
     .final-card h2 { font-family: 'Fredoka One', cursive; font-size: 2rem; color: #333; margin-bottom: 0.5rem; }
@@ -188,30 +210,26 @@
       padding: 0.75rem 2.2rem; border-radius: 50px; border: none;
       background: linear-gradient(135deg, var(--teal), var(--teal2));
       color: white; font-family: 'Fredoka One', cursive; font-size: 1.2rem;
-      cursor: pointer; box-shadow: 0 6px 18px rgba(32,201,151,0.4); transition: transform 0.15s;
+      cursor: pointer; transition: transform 0.15s;
     }
     .restart-btn:hover { transform: scale(1.06); }
-
     #confetti-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 99; }
   </style>
 </head>
 <body>
-
 <div id="bg-emojis"></div>
 <canvas id="confetti-canvas"></canvas>
 
 <div class="wrap">
   <div class="header">
-    <h1>🔊 Phonic Dictation</h1>
-    <p>Listen · Write on paper · Check the answer</p>
+    <h1>🖊️ Phonic Spelling</h1>
+    <p>Listen · Write the word · See how you did!</p>
   </div>
 
-  <!-- SCREEN 1: list -->
-  <div id="screen-select">
-    <div class="list-grid" id="list-grid"></div>
-  </div>
+  <!-- List -->
+  <div id="screen-select"><div class="list-grid" id="list-grid"></div></div>
 
-  <!-- SCREEN 2: count -->
+  <!-- Count -->
   <div id="screen-count">
     <div class="count-card">
       <h2 id="count-list-name"></h2>
@@ -220,44 +238,51 @@
     </div>
   </div>
 
-  <!-- SCREEN 3: game -->
+  <!-- Game -->
   <div id="screen-game">
     <div class="prog-bar-wrap"><div class="prog-bar" id="prog-bar" style="width:0%"></div></div>
-    <div class="prog-label" id="prog-label">0 / 0</div>
+    <div class="prog-label" id="prog-label">1 / 0</div>
 
     <div class="game-card">
-      <!-- emoji picture clue -->
-      <div class="word-emoji" id="word-emoji">🔊</div>
+      <div class="word-emoji" id="word-emoji">✏️</div>
 
-      <!-- listen button -->
-      <button class="listen-btn" id="listen-btn" onclick="speakWord()">
-        🔊 Listen Again
-      </button>
-
-      <!-- speed slider -->
-      <div class="speed-row">
-        <span class="speed-label">Speed: <span id="speed-val">1.0</span>×</span>
-        <input type="range" id="speed-slider" min="0.5" max="1.5" step="0.1" value="1.0"
-               oninput="updateSpeed(this.value)" />
-        <span style="font-size:0.8rem;color:#868e96;white-space:nowrap">🐢 → 🐇</span>
+      <!-- listen + speed -->
+      <div class="listen-row">
+        <button class="listen-btn" id="listen-btn" onclick="speakWord()">🔊 Listen</button>
+        <div class="speed-wrap">
+          <div class="speed-lbl">Speed: <span id="speed-val">1.0</span>×</div>
+          <input type="range" id="speed-slider" min="0.5" max="1.5" step="0.1" value="1.0"
+                 oninput="updateSpeed(this.value)" />
+        </div>
       </div>
 
-      <!-- show / hide answer -->
-      <div class="answer-wrap">
-        <button class="answer-toggle" id="answer-toggle" onclick="toggleAnswer()">
-          👁 Show Answer
-        </button>
-        <div class="answer-box" id="answer-box" style="display:none"></div>
+      <!-- handwriting canvas -->
+      <div class="canvas-wrap">
+        <canvas id="draw-canvas" width="900" height="420"></canvas>
+        <div class="canvas-hint" id="canvas-hint">✏️ Write the word here</div>
       </div>
 
-      <!-- next word -->
-      <button class="next-btn" onclick="nextWord()">
-        Next Word →
-      </button>
+      <div class="canvas-btns">
+        <button class="btn-clear" onclick="clearCanvas()">🗑 Clear</button>
+        <button class="btn-submit" id="btn-submit" onclick="submitWord()">✓ Submit</button>
+      </div>
+
+      <div class="recognising" id="recognising">
+        <div class="spinner"></div>
+        <span>Reading your handwriting…</span>
+      </div>
+
+      <!-- result comparison -->
+      <div id="result-area">
+        <div class="result-label">Letter by letter:</div>
+        <div class="compare-row" id="compare-row"></div>
+        <div class="result-summary" id="result-summary"></div>
+        <button class="btn-next" onclick="nextWord()">Next Word →</button>
+      </div>
     </div>
   </div>
 
-  <!-- SCREEN 4: final -->
+  <!-- Final -->
   <div id="screen-final">
     <div class="final-card">
       <div style="font-size:4rem">🏆</div>
@@ -269,24 +294,169 @@
 </div>
 
 <script>
+// ── Tesseract ─────────────────────────────────────────────────────────────────
+let tssWorker = null, tssReady = false;
+(async function initTess() {
+  try {
+    tssWorker = await Tesseract.createWorker('eng', 1, { logger: () => {} });
+    await tssWorker.setParameters({
+      tessedit_char_whitelist: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
+      tessedit_pageseg_mode: '8',   // single word
+    });
+    tssReady = true;
+  } catch(e) { console.warn('Tesseract load failed', e); }
+})();
+
+// ── Canvas ────────────────────────────────────────────────────────────────────
+const dc   = document.getElementById('draw-canvas');
+const dctx = dc.getContext('2d');
+let drawing = false, hasStroke = false;
+
+function pos(e) {
+  const r = dc.getBoundingClientRect();
+  const sx = dc.width / r.width, sy = dc.height / r.height;
+  const s  = e.touches ? e.touches[0] : e;
+  return { x: (s.clientX - r.left)*sx, y: (s.clientY - r.top)*sy };
+}
+function startDraw(e) {
+  e.preventDefault(); drawing = true;
+  const p = pos(e);
+  dctx.beginPath(); dctx.moveTo(p.x, p.y);
+  dc.classList.add('stroking');
+  document.getElementById('canvas-hint').style.display = 'none';
+  hasStroke = true;
+}
+function moveDraw(e) {
+  if (!drawing) return; e.preventDefault();
+  const p = pos(e);
+  dctx.lineTo(p.x, p.y);
+  dctx.strokeStyle = '#1a1a1a'; dctx.lineWidth = 22;
+  dctx.lineCap = 'round'; dctx.lineJoin = 'round';
+  dctx.stroke();
+}
+function endDraw() { drawing = false; dc.classList.remove('stroking'); }
+dc.addEventListener('mousedown',  startDraw);
+dc.addEventListener('mousemove',  moveDraw);
+dc.addEventListener('mouseup',    endDraw);
+dc.addEventListener('mouseleave', endDraw);
+dc.addEventListener('touchstart', startDraw, { passive: false });
+dc.addEventListener('touchmove',  moveDraw,  { passive: false });
+dc.addEventListener('touchend',   endDraw);
+
+function clearCanvas() {
+  dctx.clearRect(0, 0, dc.width, dc.height);
+  dctx.fillStyle = '#fff'; dctx.fillRect(0, 0, dc.width, dc.height);
+  hasStroke = false;
+  document.getElementById('canvas-hint').style.display = '';
+  document.getElementById('result-area').classList.remove('show');
+  document.getElementById('btn-submit').disabled = false;
+}
+
+function croppedDataURL() {
+  const px = dctx.getImageData(0, 0, dc.width, dc.height).data;
+  let x0 = dc.width, y0 = dc.height, x1 = 0, y1 = 0;
+  for (let y = 0; y < dc.height; y++) {
+    for (let x = 0; x < dc.width; x++) {
+      const i = (y*dc.width+x)*4;
+      if (px[i]<240 || px[i+1]<240 || px[i+2]<240) {
+        if (x<x0)x0=x; if (x>x1)x1=x; if (y<y0)y0=y; if (y>y1)y1=y;
+      }
+    }
+  }
+  if (x1<=x0||y1<=y0) return dc.toDataURL();
+  const pad=30, w=x1-x0+2*pad, h=y1-y0+2*pad;
+  const tmp=document.createElement('canvas'); tmp.width=w; tmp.height=h;
+  const tc=tmp.getContext('2d');
+  tc.fillStyle='#fff'; tc.fillRect(0,0,w,h);
+  tc.drawImage(dc, x0-pad, y0-pad, w, h, 0, 0, w, h);
+  return tmp.toDataURL('image/png');
+}
+
+// ── Compare ───────────────────────────────────────────────────────────────────
+function showComparison(recognised) {
+  const row    = document.getElementById('compare-row');
+  const summary= document.getElementById('result-summary');
+  row.innerHTML = '';
+
+  const exp = currentWord.toLowerCase();
+  const got = recognised.toLowerCase().replace(/[^a-z]/g,'');
+  let correct = 0;
+
+  exp.split('').forEach((ch, i) => {
+    const writtenCh = got[i] || null;
+    const match     = writtenCh === ch;
+    if (match) correct++;
+
+    const cell = document.createElement('div');
+    cell.className = 'cmp-cell';
+
+    const top = document.createElement('div');
+    top.className = 'cmp-expected ' + (writtenCh === null ? 'miss' : match ? 'ok' : 'bad');
+    top.textContent = ch.toUpperCase();
+
+    const bot = document.createElement('div');
+    bot.className = 'cmp-written ' + (writtenCh === null ? 'miss' : match ? 'ok' : 'bad');
+    bot.textContent = writtenCh
+      ? (match ? '✓' : writtenCh.toUpperCase())
+      : '?';
+
+    cell.appendChild(top);
+    cell.appendChild(bot);
+    row.appendChild(cell);
+  });
+
+  if (correct === exp.length) {
+    summary.textContent = '🌟 Perfect!';
+    summary.className   = 'result-summary perfect';
+    launchConfetti();
+  } else {
+    summary.textContent = `${correct} / ${exp.length} correct`;
+    summary.className   = 'result-summary partial';
+  }
+
+  document.getElementById('result-area').classList.add('show');
+}
+
+// ── Submit ────────────────────────────────────────────────────────────────────
+async function submitWord() {
+  if (!hasStroke) return;
+  if (!tssReady) { alert('Recognition engine loading… try again in a second!'); return; }
+
+  document.getElementById('btn-submit').disabled = true;
+  document.getElementById('recognising').classList.add('show');
+
+  try {
+    const url    = croppedDataURL();
+    const result = await tssWorker.recognize(url);
+    const raw    = (result.data.text || '').trim().replace(/\s+/g,'');
+    showComparison(raw);
+  } catch(e) {
+    showComparison('');   // show all as missed
+    console.error(e);
+  } finally {
+    document.getElementById('recognising').classList.remove('show');
+  }
+}
+
 // ── State ─────────────────────────────────────────────────────────────────────
-let queue       = [];
-let currentIdx  = 0;
-let currentWord = '';
-let speechRate  = 1.0;
-let answerShown = false;
+let queue = [], currentIdx = 0, currentWord = '', speechRate = 1.0;
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 (function init() {
-  const bgEl = document.getElementById('bg-emojis');
-  ['🔊','🎵','✏️','📝','⭐','🎉','🌟','🔤'].forEach((e, i) => {
-    const d = document.createElement('div');
-    d.className = 'bg-emoji'; d.textContent = e;
-    d.style.left = (10 + i * 11.5) + 'vw';
-    d.style.animationDuration = (12 + i * 3) + 's';
-    d.style.animationDelay    = (i * 1.5) + 's';
-    bgEl.appendChild(d);
-  });
+  // white canvas bg
+  dctx.fillStyle = '#fff'; dctx.fillRect(0, 0, dc.width, dc.height);
+
+  document.getElementById('bg-emojis') && (() => {
+    const b = document.getElementById('bg-emojis');
+    ['🔊','🎵','✏️','📝','⭐','🎉','🌟','🔤'].forEach((e,i) => {
+      const d = document.createElement('div');
+      d.className = 'bg-emoji'; d.textContent = e;
+      d.style.left = (10+i*11.5)+'vw';
+      d.style.animationDuration = (12+i*3)+'s';
+      d.style.animationDelay    = (i*1.5)+'s';
+      b.appendChild(d);
+    });
+  })();
 
   const grid = document.getElementById('list-grid');
   PHONIC_WORD_LISTS.forEach(list => {
@@ -297,163 +467,109 @@ let answerShown = false;
     grid.appendChild(card);
   });
 
-  // init slider gradient
   updateSpeed(1.0);
 })();
 
 // ── Speed ─────────────────────────────────────────────────────────────────────
-function updateSpeed(val) {
-  speechRate = parseFloat(val);
+function updateSpeed(v) {
+  speechRate = parseFloat(v);
   document.getElementById('speed-val').textContent = speechRate.toFixed(1);
-  const slider = document.getElementById('speed-slider');
-  const min = parseFloat(slider.min), max = parseFloat(slider.max);
-  const pct = ((speechRate - min) / (max - min) * 100).toFixed(1);
-  slider.style.setProperty('--pct', pct + '%');
+  const s = document.getElementById('speed-slider');
+  const pct = ((speechRate-0.5)/1*100).toFixed(1);
+  s.style.setProperty('--pct', pct+'%');
 }
 
 // ── Screens ───────────────────────────────────────────────────────────────────
 function show(id) {
   ['screen-select','screen-count','screen-game','screen-final'].forEach(s =>
-    document.getElementById(s).style.display = 'none');
-  const el = document.getElementById(id);
-  el.style.display = id === 'screen-game' ? 'flex' : 'block';
+    document.getElementById(s).style.display='none');
+  document.getElementById(id).style.display = id==='screen-game' ? 'flex' : 'block';
 }
 
 let selectedList = null;
 function selectList(list) {
   selectedList = list;
-  document.getElementById('count-list-name').textContent = list.emoji + ' ' + list.name;
+  document.getElementById('count-list-name').textContent = list.emoji+' '+list.name;
   const btns = document.getElementById('count-btns');
   btns.innerHTML = '';
   const total = list.words.length;
-  [5, 8, 10, total].filter((v,i,a) => v <= total && a.indexOf(v) === i).forEach(n => {
+  [5,8,10,total].filter((v,i,a)=>v<=total&&a.indexOf(v)===i).forEach(n=>{
     const b = document.createElement('button');
-    b.className = 'count-btn';
-    b.textContent = n === total ? `All (${n})` : n;
-    b.onclick = () => startGame(n);
-    btns.appendChild(b);
+    b.className='count-btn'; b.textContent=n===total?`All (${n})`:n;
+    b.onclick=()=>startGame(n); btns.appendChild(b);
   });
   show('screen-count');
 }
 
 function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length-1; i > 0; i--) {
-    const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];
-  }
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
   return a;
 }
 
 function startGame(n) {
-  queue = shuffle(selectedList.words).slice(0, n);
-  currentIdx = 0;
-  show('screen-game');
-  loadWord();
+  queue=shuffle(selectedList.words).slice(0,n); currentIdx=0;
+  show('screen-game'); loadWord();
 }
 
 // ── Load word ─────────────────────────────────────────────────────────────────
 function loadWord() {
   const entry = queue[currentIdx];
   currentWord = entry.word.toLowerCase();
-  answerShown = false;
-
-  const pct = Math.round((currentIdx / queue.length) * 100);
-  document.getElementById('prog-bar').style.width   = pct + '%';
-  document.getElementById('prog-label').textContent = (currentIdx + 1) + ' / ' + queue.length;
+  const pct   = Math.round((currentIdx/queue.length)*100);
+  document.getElementById('prog-bar').style.width   = pct+'%';
+  document.getElementById('prog-label').textContent = (currentIdx+1)+' / '+queue.length;
   document.getElementById('word-emoji').textContent = entry.emoji;
-
-  // reset answer
-  const toggle = document.getElementById('answer-toggle');
-  toggle.textContent = '👁 Show Answer';
-  toggle.classList.remove('shown');
-  document.getElementById('answer-box').style.display = 'none';
-  document.getElementById('answer-box').innerHTML = '';
-
+  clearCanvas();
   setTimeout(speakWord, 350);
 }
 
-// ── TTS ───────────────────────────────────────────────────────────────────────
 function speakWord() {
   if (!window.speechSynthesis) return;
   speechSynthesis.cancel();
-  const utt   = new SpeechSynthesisUtterance(currentWord);
-  utt.lang    = 'en-US';
-  utt.rate    = speechRate;
-  utt.pitch   = 1.05;
-  const btn   = document.getElementById('listen-btn');
-  btn.classList.add('speaking');
-  utt.onend   = () => btn.classList.remove('speaking');
-  speechSynthesis.speak(utt);
+  const u = new SpeechSynthesisUtterance(currentWord);
+  u.lang='en-US'; u.rate=speechRate; u.pitch=1.05;
+  const btn = document.getElementById('listen-btn');
+  btn.classList.add('speaking'); u.onend=()=>btn.classList.remove('speaking');
+  speechSynthesis.speak(u);
 }
 
-// ── Toggle answer ─────────────────────────────────────────────────────────────
-function toggleAnswer() {
-  answerShown = !answerShown;
-  const box    = document.getElementById('answer-box');
-  const toggle = document.getElementById('answer-toggle');
-
-  if (answerShown) {
-    toggle.textContent = '🙈 Hide Answer';
-    toggle.classList.add('shown');
-    box.innerHTML = '';
-    currentWord.split('').forEach(ch => {
-      const tile = document.createElement('div');
-      tile.className   = 'answer-letter';
-      tile.textContent = ch.toUpperCase();
-      box.appendChild(tile);
-    });
-    box.style.display = 'flex';
-  } else {
-    toggle.textContent = '👁 Show Answer';
-    toggle.classList.remove('shown');
-    box.style.display  = 'none';
-  }
-}
-
-// ── Next word ─────────────────────────────────────────────────────────────────
 function nextWord() {
   if (window.speechSynthesis) speechSynthesis.cancel();
   currentIdx++;
-  if (currentIdx >= queue.length) showFinal();
-  else loadWord();
+  if (currentIdx>=queue.length) showFinal(); else loadWord();
 }
 
-// ── Final ─────────────────────────────────────────────────────────────────────
 function showFinal() {
-  document.getElementById('prog-bar').style.width   = '100%';
-  document.getElementById('prog-label').textContent = queue.length + ' / ' + queue.length;
-  document.getElementById('final-msg').textContent  =
-    `Finished all ${queue.length} words! Great practice! 🌟`;
-  show('screen-final');
-  launchConfetti();
+  document.getElementById('prog-bar').style.width='100%';
+  document.getElementById('prog-label').textContent=queue.length+' / '+queue.length;
+  document.getElementById('final-msg').textContent=`Finished all ${queue.length} words! Great practice! 🌟`;
+  show('screen-final'); launchConfetti();
 }
 
 function restart() { show('screen-select'); }
 
 // ── Confetti ──────────────────────────────────────────────────────────────────
-let confettiAnim = null;
+let confettiAnim=null;
 function launchConfetti() {
-  const canvas = document.getElementById('confetti-canvas');
-  const ctx    = canvas.getContext('2d');
-  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-  const cols   = ['#20c997','#ffd43b','#ff922b','#845ef7','#ff4757','#74c0fc'];
-  const pieces = Array.from({length:90}, () => ({
-    x: Math.random()*canvas.width, y: Math.random()*canvas.height - canvas.height,
-    r: 4+Math.random()*7, d: 2+Math.random()*3,
-    color: cols[Math.floor(Math.random()*cols.length)],
-    tilt: Math.random()*10-5, ts: 0.1+Math.random()*0.15
+  const cv=document.getElementById('confetti-canvas'), ctx=cv.getContext('2d');
+  cv.width=window.innerWidth; cv.height=window.innerHeight;
+  const cols=['#20c997','#ffd43b','#ff922b','#845ef7','#ff4757','#74c0fc'];
+  const p=Array.from({length:90},()=>({
+    x:Math.random()*cv.width, y:Math.random()*cv.height-cv.height,
+    r:4+Math.random()*7, d:2+Math.random()*3,
+    color:cols[Math.floor(Math.random()*cols.length)],
+    tilt:Math.random()*10-5, ts:0.1+Math.random()*0.15
   }));
-  let angle=0, ttl=130;
-  if (confettiAnim) cancelAnimationFrame(confettiAnim);
-  function draw() {
-    ctx.clearRect(0,0,canvas.width,canvas.height); angle+=0.01;
-    pieces.forEach(p => {
-      p.y+=p.d; p.tilt+=p.ts; p.x+=Math.sin(angle)*0.8;
-      ctx.beginPath(); ctx.ellipse(p.x,p.y,p.r,p.r*0.5,p.tilt,0,Math.PI*2);
-      ctx.fillStyle=p.color; ctx.fill();
-    });
-    if(--ttl>0) confettiAnim=requestAnimationFrame(draw);
-    else ctx.clearRect(0,0,canvas.width,canvas.height);
+  let a=0,t=130;
+  if(confettiAnim)cancelAnimationFrame(confettiAnim);
+  function draw(){
+    ctx.clearRect(0,0,cv.width,cv.height); a+=0.01;
+    p.forEach(q=>{q.y+=q.d;q.tilt+=q.ts;q.x+=Math.sin(a)*0.8;
+      ctx.beginPath();ctx.ellipse(q.x,q.y,q.r,q.r*0.5,q.tilt,0,Math.PI*2);
+      ctx.fillStyle=q.color;ctx.fill();});
+    if(--t>0)confettiAnim=requestAnimationFrame(draw);
+    else ctx.clearRect(0,0,cv.width,cv.height);
   }
   draw();
 }
