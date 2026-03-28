@@ -8,7 +8,7 @@ const PHONIC_WORD_LISTS = [
     emoji: "🔊",
     words: [
       { word: "skunk",   emoji: "🦨" },
-      { word: "desk",    emoji: "🪑" },
+      { word: "desk",    emoji: "┳━┳" },
       { word: "scale",   emoji: "⚖️" },
       { word: "school",  emoji: "🏫" },
       { word: "spray",   emoji: "💦" },
