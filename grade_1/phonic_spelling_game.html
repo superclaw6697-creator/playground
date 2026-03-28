@@ -6,6 +6,8 @@
   <title>🔊 Phonic Spelling Game</title>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet" />
   <script src="phonic_word_list.js"></script>
+  <!-- Tesseract.js for in-browser OCR -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -25,7 +27,6 @@
       overflow-x: hidden;
     }
 
-    /* floating bg */
     .bg-emoji {
       position: fixed; opacity: 0.08; pointer-events: none;
       animation: floatUp linear infinite; z-index: 0;
@@ -45,12 +46,8 @@
 
     /* ── Header ── */
     .header { width: 100%; text-align: center; color: white; }
-    .header h1 {
-      font-family: 'Fredoka One', cursive;
-      font-size: 2.2rem;
-      text-shadow: 2px 3px 6px rgba(0,0,0,0.2);
-    }
-    .header p { opacity: 0.85; font-size: 0.9rem; margin-top: 0.15rem; }
+    .header h1 { font-family: 'Fredoka One', cursive; font-size: 2.2rem; text-shadow: 2px 3px 6px rgba(0,0,0,0.2); }
+    .header p  { opacity: 0.85; font-size: 0.9rem; margin-top: 0.15rem; }
 
     /* ── List selection ── */
     #screen-select { width: 100%; }
@@ -66,21 +63,14 @@
       transition: transform 0.18s, box-shadow 0.18s;
       border: 3px solid transparent;
     }
-    .list-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 14px 30px rgba(0,0,0,0.2);
-      border-color: var(--yellow);
-    }
+    .list-card:hover { transform: translateY(-5px); box-shadow: 0 14px 30px rgba(0,0,0,0.2); border-color: var(--yellow); }
     .list-card .lc-emoji { font-size: 2.8rem; display: block; margin-bottom: 0.4rem; }
     .list-card .lc-name  { font-weight: 800; font-size: 1rem; color: #333; }
     .list-card .lc-count { font-size: 0.8rem; color: #888; margin-top: 0.2rem; }
 
     /* ── Count picker ── */
     #screen-count { width: 100%; display: none; }
-    .count-card {
-      background: white; border-radius: 24px; padding: 1.6rem 1.4rem;
-      text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-    }
+    .count-card { background: white; border-radius: 24px; padding: 1.6rem 1.4rem; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
     .count-card h2 { font-family: 'Fredoka One', cursive; font-size: 1.6rem; color: #333; }
     .count-card p  { color: #888; font-size: 0.9rem; margin: 0.3rem 0 1rem; }
     .count-btns { display: flex; gap: 0.7rem; flex-wrap: wrap; justify-content: center; }
@@ -88,104 +78,139 @@
       padding: 0.55rem 1.2rem; border-radius: 50px; border: none;
       background: var(--teal); color: white;
       font-family: 'Fredoka One', cursive; font-size: 1.1rem;
-      cursor: pointer; transition: transform 0.15s, opacity 0.15s;
+      cursor: pointer; transition: transform 0.15s;
     }
-    .count-btn:hover { transform: scale(1.08); opacity: 0.9; }
+    .count-btn:hover { transform: scale(1.08); }
 
     /* ── Game screen ── */
     #screen-game { width: 100%; display: none; flex-direction: column; gap: 0.8rem; }
-
-    /* progress */
-    .prog-bar-wrap {
-      width: 100%; background: rgba(255,255,255,0.25);
-      border-radius: 50px; height: 10px;
-    }
-    .prog-bar {
-      height: 10px; border-radius: 50px;
-      background: white;
-      transition: width 0.4s ease;
-    }
+    .prog-bar-wrap { width: 100%; background: rgba(255,255,255,0.25); border-radius: 50px; height: 10px; }
+    .prog-bar { height: 10px; border-radius: 50px; background: white; transition: width 0.4s ease; }
     .prog-label { color: white; font-size: 0.85rem; text-align: right; margin-top: 0.2rem; }
 
-    /* game card */
     .game-card {
       background: white; border-radius: 28px; padding: 1.8rem 1.4rem;
       width: 100%; text-align: center;
       box-shadow: 0 12px 36px rgba(0,0,0,0.15);
     }
 
-    /* emoji */
     .word-emoji { font-size: 4rem; line-height: 1; margin-bottom: 0.5rem; }
 
-    /* listen button */
     .listen-btn {
       display: inline-flex; align-items: center; gap: 0.5rem;
       padding: 0.75rem 2rem; border-radius: 50px; border: none;
       background: linear-gradient(135deg, var(--teal), var(--teal2));
       color: white; font-family: 'Fredoka One', cursive; font-size: 1.3rem;
       cursor: pointer; box-shadow: 0 6px 18px rgba(32,201,151,0.4);
-      transition: transform 0.15s, box-shadow 0.15s;
-      margin-bottom: 1.2rem;
+      transition: transform 0.15s; margin-bottom: 1.2rem;
     }
-    .listen-btn:hover { transform: scale(1.05); box-shadow: 0 8px 24px rgba(32,201,151,0.5); }
+    .listen-btn:hover { transform: scale(1.05); }
     .listen-btn.speaking { animation: pulse 0.7s ease infinite alternate; }
     @keyframes pulse {
       from { box-shadow: 0 6px 18px rgba(32,201,151,0.4); transform: scale(1); }
       to   { box-shadow: 0 10px 30px rgba(32,201,151,0.7); transform: scale(1.06); }
     }
 
-    /* letter boxes */
+    /* ── Letter boxes ── */
     .boxes-row {
       display: flex; flex-wrap: wrap; justify-content: center;
-      gap: 0.45rem; margin-bottom: 1.2rem;
+      gap: 0.5rem; margin-bottom: 1rem;
     }
-    .letter-box {
-      width: 48px; height: 56px;
-      border: 3px solid #dee2e6; border-radius: 12px;
-      font-family: 'Fredoka One', cursive; font-size: 1.6rem;
-      text-align: center; color: #333;
-      outline: none; text-transform: uppercase;
-      transition: border-color 0.15s, background 0.15s, transform 0.12s;
+    /* each box is a clickable tile that opens the draw pad */
+    .letter-tile {
+      width: 54px; height: 62px;
+      border: 3px solid #dee2e6; border-radius: 14px;
       background: #f8f9fa;
-      caret-color: transparent;
+      font-family: 'Fredoka One', cursive; font-size: 1.7rem;
+      color: #333; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: border-color 0.15s, background 0.15s, transform 0.12s;
+      position: relative; user-select: none;
     }
-    .letter-box:focus {
-      border-color: var(--teal); background: #e6fcf5;
-      transform: scale(1.08);
+    .letter-tile:not(.done):hover { border-color: var(--teal); background: #e6fcf5; transform: scale(1.08); }
+    .letter-tile.active  { border-color: var(--purple); background: #f3f0ff; transform: scale(1.1); box-shadow: 0 0 0 3px rgba(132,94,247,0.25); }
+    .letter-tile.correct { border-color: var(--teal2); background: #d3f9d8; color: var(--teal2); animation: popIn 0.22s ease; cursor: default; }
+    .letter-tile.wrong   { border-color: var(--red); background: #fff5f5; animation: shake 0.35s ease; }
+    .letter-tile.done    { cursor: default; }
+    /* pencil icon hint on empty tiles */
+    .letter-tile:not(.correct)::after {
+      content: '✏️';
+      position: absolute; bottom: 1px; right: 2px;
+      font-size: 0.6rem; opacity: 0.4;
     }
-    .letter-box.correct {
-      border-color: var(--teal2); background: #d3f9d8; color: var(--teal2);
-      animation: popIn 0.2s ease;
-    }
-    .letter-box.wrong {
-      border-color: var(--red); background: #fff5f5;
-      animation: shake 0.35s ease;
-    }
-    @keyframes popIn {
-      0%   { transform: scale(1.0); }
-      50%  { transform: scale(1.2); }
-      100% { transform: scale(1.0); }
-    }
-    @keyframes shake {
-      0%,100% { transform: translateX(0); }
-      25%      { transform: translateX(-6px); }
-      75%      { transform: translateX(6px); }
-    }
+    .letter-tile.correct::after { content: ''; }
+
+    @keyframes popIn { 0%{transform:scale(1)}50%{transform:scale(1.22)}100%{transform:scale(1)} }
+    @keyframes shake { 0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)} }
 
     /* hint */
     .hint-btn {
       background: none; border: 2px dashed #ced4da; border-radius: 50px;
       color: #adb5bd; font-family: 'Nunito', sans-serif; font-size: 0.9rem;
       font-weight: 700; padding: 0.4rem 1.2rem; cursor: pointer;
-      transition: border-color 0.15s, color 0.15s;
-      margin-bottom: 0.6rem;
+      transition: border-color 0.15s, color 0.15s; margin-bottom: 0.6rem;
     }
     .hint-btn:hover { border-color: var(--orange); color: var(--orange); }
+    .status-msg { min-height: 1.8rem; font-size: 1rem; font-weight: 700; color: var(--red); }
 
-    /* status message */
-    .status-msg {
-      min-height: 1.8rem; font-size: 1rem; font-weight: 700;
-      color: var(--red); transition: opacity 0.2s;
+    /* ── Draw Pad Overlay ── */
+    #pad-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6); z-index: 90;
+      align-items: center; justify-content: center;
+    }
+    #pad-overlay.show { display: flex; }
+
+    .pad-card {
+      background: white; border-radius: 28px;
+      padding: 1.5rem 1.5rem 1.2rem;
+      width: min(92vw, 360px);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+      display: flex; flex-direction: column; align-items: center; gap: 0.8rem;
+      animation: popIn 0.25s ease;
+    }
+    .pad-title {
+      font-family: 'Fredoka One', cursive; font-size: 1.4rem; color: #333;
+    }
+    .pad-subtitle { color: #868e96; font-size: 0.85rem; margin-top: -0.5rem; }
+
+    #draw-canvas {
+      border: 3px solid #dee2e6; border-radius: 16px;
+      background: white; cursor: crosshair;
+      touch-action: none;
+      width: 100%; max-width: 300px; aspect-ratio: 1;
+    }
+    #draw-canvas.active-stroke { border-color: var(--purple); }
+
+    .pad-btns { display: flex; gap: 0.7rem; width: 100%; }
+    .pad-btn {
+      flex: 1; padding: 0.65rem 0; border-radius: 50px; border: none;
+      font-family: 'Fredoka One', cursive; font-size: 1.1rem;
+      cursor: pointer; transition: transform 0.15s;
+    }
+    .pad-btn:hover { transform: scale(1.05); }
+    .pad-btn-clear { background: #f1f3f5; color: #555; }
+    .pad-btn-check {
+      background: linear-gradient(135deg, var(--teal), var(--teal2));
+      color: white; box-shadow: 0 4px 14px rgba(32,201,151,0.4);
+    }
+    .pad-btn-cancel { background: #f1f3f5; color: #888; }
+
+    #pad-status {
+      min-height: 1.4rem; font-size: 0.95rem; font-weight: 700;
+      color: var(--red); text-align: center;
+    }
+
+    /* recognition spinner */
+    .recognising {
+      display: none; align-items: center; gap: 0.5rem;
+      font-size: 0.9rem; color: #868e96;
+    }
+    .recognising.show { display: flex; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      width: 18px; height: 18px; border: 2px solid #dee2e6;
+      border-top-color: var(--teal); border-radius: 50%;
+      animation: spin 0.7s linear infinite;
     }
 
     /* ── Success overlay ── */
@@ -198,66 +223,52 @@
     .success-card {
       background: white; border-radius: 32px; padding: 2.5rem 2rem;
       text-align: center; max-width: 340px; width: 90%;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      animation: popIn 0.35s ease;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: popIn 0.35s ease;
     }
-    .success-big   { font-size: 4rem; margin-bottom: 0.3rem; }
-    .success-word  {
-      font-family: 'Fredoka One', cursive; font-size: 2.2rem;
-      color: var(--teal2); letter-spacing: 0.05em;
-    }
-    .success-label { color: #868e96; font-size: 0.95rem; margin: 0.3rem 0 1.2rem; }
+    .success-big  { font-size: 4rem; margin-bottom: 0.3rem; }
+    .success-word { font-family: 'Fredoka One', cursive; font-size: 2.2rem; color: var(--teal2); letter-spacing: 0.05em; }
+    .success-label{ color: #868e96; font-size: 0.95rem; margin: 0.3rem 0 1.2rem; }
     .next-btn {
       padding: 0.75rem 2.5rem; border-radius: 50px; border: none;
       background: linear-gradient(135deg, var(--teal), var(--teal2));
       color: white; font-family: 'Fredoka One', cursive; font-size: 1.25rem;
-      cursor: pointer; box-shadow: 0 6px 18px rgba(32,201,151,0.4);
-      transition: transform 0.15s;
+      cursor: pointer; box-shadow: 0 6px 18px rgba(32,201,151,0.4); transition: transform 0.15s;
     }
     .next-btn:hover { transform: scale(1.06); }
 
     /* ── Final screen ── */
     #screen-final { width: 100%; display: none; text-align: center; }
-    .final-card {
-      background: white; border-radius: 28px; padding: 2.5rem 1.8rem;
-      box-shadow: 0 12px 36px rgba(0,0,0,0.15);
-    }
+    .final-card { background: white; border-radius: 28px; padding: 2.5rem 1.8rem; box-shadow: 0 12px 36px rgba(0,0,0,0.15); }
     .final-card h2 { font-family: 'Fredoka One', cursive; font-size: 2rem; color: #333; margin-bottom: 0.5rem; }
     .final-card p  { color: #868e96; font-size: 1rem; margin-bottom: 1.5rem; }
     .restart-btn {
       padding: 0.75rem 2.2rem; border-radius: 50px; border: none;
       background: linear-gradient(135deg, var(--teal), var(--teal2));
       color: white; font-family: 'Fredoka One', cursive; font-size: 1.2rem;
-      cursor: pointer; box-shadow: 0 6px 18px rgba(32,201,151,0.4);
-      transition: transform 0.15s;
+      cursor: pointer; box-shadow: 0 6px 18px rgba(32,201,151,0.4); transition: transform 0.15s;
     }
     .restart-btn:hover { transform: scale(1.06); }
 
-    /* confetti canvas */
-    #confetti-canvas {
-      position: fixed; inset: 0; pointer-events: none; z-index: 99;
-    }
+    #confetti-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 99; }
   </style>
 </head>
 <body>
 
-<!-- floating bg -->
 <div id="bg-emojis"></div>
-
 <canvas id="confetti-canvas"></canvas>
 
 <div class="wrap">
   <div class="header">
     <h1>🔊 Phonic Spelling</h1>
-    <p>Listen to the word and spell it!</p>
+    <p>Listen · Write each letter · Spell the word!</p>
   </div>
 
-  <!-- SCREEN 1: list selection -->
+  <!-- SCREEN 1: list -->
   <div id="screen-select">
     <div class="list-grid" id="list-grid"></div>
   </div>
 
-  <!-- SCREEN 2: how many words -->
+  <!-- SCREEN 2: count -->
   <div id="screen-count">
     <div class="count-card">
       <h2 id="count-list-name"></h2>
@@ -268,24 +279,14 @@
 
   <!-- SCREEN 3: game -->
   <div id="screen-game">
-    <div class="prog-bar-wrap">
-      <div class="prog-bar" id="prog-bar" style="width:0%"></div>
-    </div>
+    <div class="prog-bar-wrap"><div class="prog-bar" id="prog-bar" style="width:0%"></div></div>
     <div class="prog-label" id="prog-label">0 / 0</div>
 
     <div class="game-card">
       <div class="word-emoji" id="word-emoji">🔊</div>
-
-      <button class="listen-btn" id="listen-btn" onclick="speakWord()">
-        🔊 Listen
-      </button>
-
+      <button class="listen-btn" id="listen-btn" onclick="speakWord()">🔊 Listen</button>
       <div class="boxes-row" id="boxes-row"></div>
-
-      <button class="hint-btn" id="hint-btn" onclick="showHint()">
-        💡 Hint (show first letter)
-      </button>
-
+      <button class="hint-btn" id="hint-btn" onclick="showHint()">💡 Hint (show first letter)</button>
       <div class="status-msg" id="status-msg"></div>
     </div>
   </div>
@@ -301,7 +302,26 @@
   </div>
 </div>
 
-<!-- success overlay -->
+<!-- Draw Pad Overlay -->
+<div id="pad-overlay">
+  <div class="pad-card">
+    <div class="pad-title" id="pad-title">Write the letter</div>
+    <div class="pad-subtitle" id="pad-subtitle">Use your finger or mouse</div>
+    <canvas id="draw-canvas" width="300" height="300"></canvas>
+    <div class="recognising" id="recognising">
+      <div class="spinner"></div>
+      <span>Reading your letter...</span>
+    </div>
+    <div id="pad-status"></div>
+    <div class="pad-btns">
+      <button class="pad-btn pad-btn-clear"  onclick="clearPad()">🗑️ Clear</button>
+      <button class="pad-btn pad-btn-check"  id="check-btn" onclick="checkHandwriting()">✓ Check</button>
+    </div>
+    <button class="pad-btn pad-btn-cancel" style="width:100%;margin-top:-0.2rem" onclick="closePad()">✕ Cancel</button>
+  </div>
+</div>
+
+<!-- Success overlay -->
 <div id="success-overlay">
   <div class="success-card">
     <div class="success-big" id="suc-emoji">🎉</div>
@@ -312,63 +332,243 @@
 </div>
 
 <script>
-// ── State ────────────────────────────────────────────────────────────────────
-let queue        = [];   // shuffled words for this session
-let currentIdx   = 0;
-let currentWord  = '';
-let hintUsed     = false;
+// ── State ─────────────────────────────────────────────────────────────────────
+let queue       = [];
+let currentIdx  = 0;
+let currentWord = '';
+let activeTile  = null;   // index of tile being drawn for
+let tesseractWorker = null;
+let tssReady    = false;
 
-// ── Init ─────────────────────────────────────────────────────────────────────
+// ── Tesseract init ────────────────────────────────────────────────────────────
+async function initTesseract() {
+  try {
+    tesseractWorker = await Tesseract.createWorker('eng', 1, {
+      logger: () => {}
+    });
+    await tesseractWorker.setParameters({
+      tessedit_char_whitelist: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
+      tessedit_pageseg_mode:   '10',   // single character
+    });
+    tssReady = true;
+  } catch(e) {
+    console.warn('Tesseract load failed:', e);
+  }
+}
+initTesseract();
+
+// ── Draw Pad setup ────────────────────────────────────────────────────────────
+const drawCanvas = document.getElementById('draw-canvas');
+const dctx       = drawCanvas.getContext('2d');
+let drawing      = false;
+let hasStroke    = false;
+
+function padPos(e) {
+  const r = drawCanvas.getBoundingClientRect();
+  const scaleX = drawCanvas.width  / r.width;
+  const scaleY = drawCanvas.height / r.height;
+  const src = e.touches ? e.touches[0] : e;
+  return { x: (src.clientX - r.left) * scaleX,
+           y: (src.clientY - r.top)  * scaleY };
+}
+
+function startDraw(e) {
+  e.preventDefault();
+  drawing = true; hasStroke = true;
+  dctx.beginPath();
+  const p = padPos(e);
+  dctx.moveTo(p.x, p.y);
+  drawCanvas.classList.add('active-stroke');
+}
+function moveDraw(e) {
+  if (!drawing) return;
+  e.preventDefault();
+  const p = padPos(e);
+  dctx.lineTo(p.x, p.y);
+  dctx.strokeStyle = '#1a1a1a';
+  dctx.lineWidth   = 18;
+  dctx.lineCap     = 'round';
+  dctx.lineJoin    = 'round';
+  dctx.stroke();
+}
+function endDraw(e) {
+  drawing = false;
+  drawCanvas.classList.remove('active-stroke');
+}
+
+drawCanvas.addEventListener('mousedown',  startDraw);
+drawCanvas.addEventListener('mousemove',  moveDraw);
+drawCanvas.addEventListener('mouseup',    endDraw);
+drawCanvas.addEventListener('mouseleave', endDraw);
+drawCanvas.addEventListener('touchstart', startDraw, { passive: false });
+drawCanvas.addEventListener('touchmove',  moveDraw,  { passive: false });
+drawCanvas.addEventListener('touchend',   endDraw);
+
+function clearPad() {
+  dctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+  // white background for better OCR
+  dctx.fillStyle = '#ffffff';
+  dctx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+  hasStroke = false;
+  document.getElementById('pad-status').textContent = '';
+  document.getElementById('check-btn').disabled = false;
+}
+
+function openPad(idx) {
+  activeTile = idx;
+  const letter = currentWord[idx].toUpperCase();
+  document.getElementById('pad-title').textContent = `Write the letter  "${letter}"`;
+  document.getElementById('pad-subtitle').textContent = 'Draw with your finger or mouse';
+  document.getElementById('pad-status').textContent  = '';
+  document.getElementById('recognising').classList.remove('show');
+  document.getElementById('check-btn').disabled = false;
+  clearPad();
+  document.getElementById('pad-overlay').classList.add('show');
+}
+
+function closePad() {
+  document.getElementById('pad-overlay').classList.remove('show');
+  activeTile = null;
+}
+
+async function checkHandwriting() {
+  if (!hasStroke) { document.getElementById('pad-status').textContent = '✏️ Please write something first!'; return; }
+  if (!tssReady)  { document.getElementById('pad-status').textContent = '⏳ Still loading recognition engine…'; return; }
+
+  document.getElementById('recognising').classList.add('show');
+  document.getElementById('check-btn').disabled = true;
+  document.getElementById('pad-status').textContent = '';
+
+  try {
+    // Crop to bounding box of ink for better recognition
+    const croppedDataURL = getCroppedCanvas();
+
+    const result = await tesseractWorker.recognize(croppedDataURL);
+    document.getElementById('recognising').classList.remove('show');
+
+    const raw = (result.data.text || '').trim().replace(/\s/g, '');
+    const recognised = raw.slice(0, 1).toLowerCase();
+
+    if (!recognised || !/[a-z]/.test(recognised)) {
+      document.getElementById('pad-status').textContent = '😅 Couldn\'t read it — try writing bigger & clearer!';
+      document.getElementById('check-btn').disabled = false;
+      return;
+    }
+
+    const expected = currentWord[activeTile];
+    if (recognised === expected) {
+      closePad();
+      fillTile(activeTile, recognised);
+    } else {
+      document.getElementById('pad-status').textContent =
+        `I read "${recognised.toUpperCase()}" — expected "${expected.toUpperCase()}" 🙈 Try again!`;
+      document.getElementById('check-btn').disabled = false;
+    }
+  } catch(e) {
+    document.getElementById('recognising').classList.remove('show');
+    document.getElementById('pad-status').textContent = '❌ Error — try again!';
+    document.getElementById('check-btn').disabled = false;
+    console.error(e);
+  }
+}
+
+// Crop the drawn canvas to the ink bounding box (improves OCR)
+function getCroppedCanvas() {
+  const pixels = dctx.getImageData(0, 0, drawCanvas.width, drawCanvas.height).data;
+  let minX = drawCanvas.width, minY = drawCanvas.height, maxX = 0, maxY = 0;
+  for (let y = 0; y < drawCanvas.height; y++) {
+    for (let x = 0; x < drawCanvas.width; x++) {
+      const i = (y * drawCanvas.width + x) * 4;
+      // non-white pixel
+      if (pixels[i] < 240 || pixels[i+1] < 240 || pixels[i+2] < 240) {
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX <= minX || maxY <= minY) return drawCanvas.toDataURL();
+
+  const pad   = 20;
+  const x0    = Math.max(0, minX - pad);
+  const y0    = Math.max(0, minY - pad);
+  const w     = Math.min(drawCanvas.width,  maxX - minX + 2*pad);
+  const h     = Math.min(drawCanvas.height, maxY - minY + 2*pad);
+
+  const tmp = document.createElement('canvas');
+  tmp.width  = w; tmp.height = h;
+  const tc   = tmp.getContext('2d');
+  tc.fillStyle = '#ffffff';
+  tc.fillRect(0, 0, w, h);
+  tc.drawImage(drawCanvas, x0, y0, w, h, 0, 0, w, h);
+  return tmp.toDataURL('image/png');
+}
+
+// ── Game state ────────────────────────────────────────────────────────────────
+function fillTile(idx, letter) {
+  const tiles = getTiles();
+  const tile  = tiles[idx];
+  tile.textContent = letter.toUpperCase();
+  tile.classList.remove('wrong','active');
+  tile.classList.add('correct', 'done');
+  tile.onclick = null;
+
+  // speak the letter
+  if (window.speechSynthesis) {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(letter);
+    u.lang = 'en-US'; u.rate = 0.9;
+    speechSynthesis.speak(u);
+  }
+
+  // check all done
+  setTimeout(() => {
+    if (tiles.every(t => t.classList.contains('correct'))) showSuccess();
+    else {
+      // highlight next empty tile
+      const next = tiles.findIndex((t, i) => i > idx && !t.classList.contains('correct'));
+      if (next !== -1) tiles[next].classList.add('active');
+    }
+  }, 200);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
 (function init() {
-  // Floating bg emojis
   const bgEl = document.getElementById('bg-emojis');
-  const ems  = ['🔊','🎵','✏️','📝','⭐','🎉','🌟','🔤'];
-  ems.forEach((e, i) => {
+  ['🔊','🎵','✏️','📝','⭐','🎉','🌟','🔤'].forEach((e, i) => {
     const d = document.createElement('div');
-    d.className = 'bg-emoji';
-    d.textContent = e;
-    d.style.left           = (10 + i * 11.5) + 'vw';
+    d.className = 'bg-emoji'; d.textContent = e;
+    d.style.left = (10 + i * 11.5) + 'vw';
     d.style.animationDuration = (12 + i * 3) + 's';
     d.style.animationDelay    = (i * 1.5) + 's';
     bgEl.appendChild(d);
   });
 
-  // Build list cards
   const grid = document.getElementById('list-grid');
   PHONIC_WORD_LISTS.forEach(list => {
     const card = document.createElement('div');
     card.className = 'list-card';
-    card.innerHTML = `
-      <span class="lc-emoji">${list.emoji}</span>
-      <span class="lc-name">${list.name}</span>
-      <span class="lc-count">${list.words.length} words</span>
-    `;
+    card.innerHTML = `<span class="lc-emoji">${list.emoji}</span><span class="lc-name">${list.name}</span><span class="lc-count">${list.words.length} words</span>`;
     card.onclick = () => selectList(list);
     grid.appendChild(card);
   });
 })();
 
-// ── Screens ──────────────────────────────────────────────────────────────────
-function show(screenId) {
-  ['screen-select','screen-count','screen-game','screen-final'].forEach(id => {
-    const el = document.getElementById(id);
-    el.style.display = 'none';
-  });
-  const target = document.getElementById(screenId);
-  target.style.display = screenId === 'screen-game' ? 'flex' : 'block';
+// ── Screens ───────────────────────────────────────────────────────────────────
+function show(id) {
+  ['screen-select','screen-count','screen-game','screen-final'].forEach(s =>
+    document.getElementById(s).style.display = 'none');
+  const el = document.getElementById(id);
+  el.style.display = id === 'screen-game' ? 'flex' : 'block';
 }
 
-// ── List selection ────────────────────────────────────────────────────────────
 let selectedList = null;
-
 function selectList(list) {
   selectedList = list;
   document.getElementById('count-list-name').textContent = list.emoji + ' ' + list.name;
   const btns = document.getElementById('count-btns');
   btns.innerHTML = '';
   const total = list.words.length;
-  const opts  = [5, 8, 10, total].filter((v, i, a) => v <= total && a.indexOf(v) === i);
-  opts.forEach(n => {
+  [5, 8, 10, total].filter((v,i,a) => v <= total && a.indexOf(v) === i).forEach(n => {
     const b = document.createElement('button');
     b.className = 'count-btn';
     b.textContent = n === total ? `All (${n})` : n;
@@ -378,161 +578,64 @@ function selectList(list) {
   show('screen-count');
 }
 
-// ── Start game ────────────────────────────────────────────────────────────────
 function shuffle(arr) {
   const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
+  for (let i = a.length-1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
   return a;
 }
 
 function startGame(n) {
-  queue      = shuffle(selectedList.words).slice(0, n);
+  queue = shuffle(selectedList.words).slice(0, n);
   currentIdx = 0;
   show('screen-game');
   loadWord();
 }
 
-// ── Word loading ──────────────────────────────────────────────────────────────
+// ── Load word ─────────────────────────────────────────────────────────────────
 function loadWord() {
   const entry = queue[currentIdx];
   currentWord = entry.word.toLowerCase();
-  hintUsed    = false;
 
-  // progress
   const pct = Math.round((currentIdx / queue.length) * 100);
-  document.getElementById('prog-bar').style.width  = pct + '%';
+  document.getElementById('prog-bar').style.width   = pct + '%';
   document.getElementById('prog-label').textContent = currentIdx + ' / ' + queue.length;
-
-  // emoji
   document.getElementById('word-emoji').textContent = entry.emoji;
 
-  // hint button reset
   const hb = document.getElementById('hint-btn');
-  hb.style.display = 'inline-block';
-  hb.disabled      = false;
-  hb.style.opacity = '1';
-
-  // status
+  hb.disabled = false; hb.style.opacity = '1';
   document.getElementById('status-msg').textContent = '';
 
-  // build input boxes
-  buildBoxes(currentWord.length);
-
-  // auto-speak after short delay
+  buildTiles(currentWord.length);
   setTimeout(speakWord, 400);
 }
 
-function buildBoxes(len) {
+function buildTiles(len) {
   const row = document.getElementById('boxes-row');
   row.innerHTML = '';
   for (let i = 0; i < len; i++) {
-    const inp = document.createElement('input');
-    inp.type         = 'text';
-    inp.maxLength    = 1;
-    inp.className    = 'letter-box';
-    inp.dataset.idx  = i;
-    inp.autocomplete = 'off';
-    inp.autocorrect  = 'off';
-    inp.spellcheck   = false;
-    inp.addEventListener('keydown',  onKeyDown);
-    inp.addEventListener('input',    onInput);
-    row.appendChild(inp);
-  }
-  // focus first box
-  row.children[0].focus();
-}
-
-// ── Input handling ────────────────────────────────────────────────────────────
-function getBoxes() {
-  return Array.from(document.querySelectorAll('.letter-box'));
-}
-
-function onKeyDown(e) {
-  const boxes = getBoxes();
-  const i     = parseInt(this.dataset.idx);
-
-  if (e.key === 'Backspace') {
-    e.preventDefault();
-    this.value = '';
-    this.classList.remove('correct','wrong');
-    if (i > 0) boxes[i - 1].focus();
-    document.getElementById('status-msg').textContent = '';
-  } else if (e.key === 'ArrowLeft' && i > 0) {
-    boxes[i - 1].focus();
-  } else if (e.key === 'ArrowRight' && i < boxes.length - 1) {
-    boxes[i + 1].focus();
+    const tile = document.createElement('div');
+    tile.className   = 'letter-tile' + (i === 0 ? ' active' : '');
+    tile.dataset.idx = i;
+    tile.onclick     = () => { if (!tile.classList.contains('correct')) openPad(i); };
+    row.appendChild(tile);
   }
 }
 
-function onInput(e) {
-  const boxes = getBoxes();
-  const i     = parseInt(this.dataset.idx);
-  const val   = this.value.replace(/[^a-zA-Z]/g, '').slice(-1).toLowerCase();
+function getTiles() { return Array.from(document.querySelectorAll('.letter-tile')); }
 
-  if (!val) { this.value = ''; return; }
-
-  this.value = val.toUpperCase();
-  const correct = (val === currentWord[i]);
-
-  // brief colour flash
-  this.classList.remove('correct','wrong');
-  void this.offsetWidth; // reflow
-  this.classList.add(correct ? 'correct' : 'wrong');
-  if (!correct) {
-    this.value = '';
-    setTimeout(() => { this.classList.remove('wrong'); }, 350);
-    document.getElementById('status-msg').textContent = 'Try again! 🙈';
-    return;
-  }
-
-  document.getElementById('status-msg').textContent = '';
-
-  // advance to next empty
-  if (i < boxes.length - 1) {
-    boxes[i + 1].focus();
-  }
-
-  // check complete
-  checkComplete(boxes);
-}
-
-function checkComplete(boxes) {
-  const filled = boxes.every(b => b.value !== '');
-  if (!filled) return;
-  const typed = boxes.map(b => b.value.toLowerCase()).join('');
-  if (typed === currentWord) {
-    showSuccess();
-  }
-}
-
-// ── Hint ─────────────────────────────────────────────────────────────────────
+// ── Hint ──────────────────────────────────────────────────────────────────────
 function showHint() {
-  hintUsed = true;
-  const boxes = getBoxes();
-  boxes[0].value = currentWord[0].toUpperCase();
-  boxes[0].classList.add('correct');
-  boxes[0].disabled = true;
-  if (boxes.length > 1) boxes[1].focus();
-
+  fillTile(0, currentWord[0]);
   const hb = document.getElementById('hint-btn');
-  hb.disabled      = true;
-  hb.style.opacity = '0.4';
-
-  checkComplete(boxes);
+  hb.disabled = true; hb.style.opacity = '0.4';
 }
 
-// ── TTS ──────────────────────────────────────────────────────────────────────
+// ── TTS ───────────────────────────────────────────────────────────────────────
 function speakWord() {
   if (!window.speechSynthesis) return;
   speechSynthesis.cancel();
   const utt = new SpeechSynthesisUtterance(currentWord);
-  utt.lang  = 'en-US';
-  utt.rate  = 0.85;
-  utt.pitch = 1.05;
-
+  utt.lang = 'en-US'; utt.rate = 0.85; utt.pitch = 1.05;
   const btn = document.getElementById('listen-btn');
   btn.classList.add('speaking');
   utt.onend = () => btn.classList.remove('speaking');
@@ -541,22 +644,15 @@ function speakWord() {
 
 // ── Success ───────────────────────────────────────────────────────────────────
 function showSuccess() {
-  // disable all boxes
-  getBoxes().forEach(b => { b.disabled = true; });
-
   document.getElementById('suc-emoji').textContent = queue[currentIdx].emoji;
   document.getElementById('suc-word').textContent  = currentWord.toUpperCase();
   document.getElementById('success-overlay').classList.add('show');
-
   launchConfetti();
-
-  // speak the word again on success
   setTimeout(() => {
     if (window.speechSynthesis) {
       speechSynthesis.cancel();
-      const utt = new SpeechSynthesisUtterance(currentWord);
-      utt.lang  = 'en-US'; utt.rate = 0.9;
-      speechSynthesis.speak(utt);
+      const u = new SpeechSynthesisUtterance('Correct! ' + currentWord);
+      u.lang = 'en-US'; u.rate = 0.9; speechSynthesis.speak(u);
     }
   }, 300);
 }
@@ -564,65 +660,44 @@ function showSuccess() {
 function nextWord() {
   document.getElementById('success-overlay').classList.remove('show');
   currentIdx++;
-  if (currentIdx >= queue.length) {
-    showFinal();
-  } else {
-    loadWord();
-  }
+  if (currentIdx >= queue.length) showFinal();
+  else loadWord();
 }
 
-// ── Final ─────────────────────────────────────────────────────────────────────
 function showFinal() {
-  document.getElementById('prog-bar').style.width  = '100%';
+  document.getElementById('prog-bar').style.width   = '100%';
   document.getElementById('prog-label').textContent = queue.length + ' / ' + queue.length;
-  document.getElementById('final-msg').textContent =
-    `You spelled all ${queue.length} words correctly! Amazing! 🌟`;
+  document.getElementById('final-msg').textContent  = `You spelled all ${queue.length} words correctly! Amazing! 🌟`;
   show('screen-final');
   launchConfetti();
 }
 
-function restart() {
-  show('screen-select');
-}
+function restart() { show('screen-select'); }
 
 // ── Confetti ──────────────────────────────────────────────────────────────────
 let confettiAnim = null;
 function launchConfetti() {
   const canvas = document.getElementById('confetti-canvas');
   const ctx    = canvas.getContext('2d');
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  const pieces = Array.from({ length: 80 }, () => ({
-    x:   Math.random() * canvas.width,
-    y:   Math.random() * canvas.height - canvas.height,
-    r:   4 + Math.random() * 7,
-    d:   2 + Math.random() * 3,
-    color: ['#20c997','#ffd43b','#ff922b','#845ef7','#ff4757','#74c0fc'][Math.floor(Math.random()*6)],
-    tilt: Math.random() * 10 - 5,
-    tiltSpeed: 0.1 + Math.random() * 0.15
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  const cols   = ['#20c997','#ffd43b','#ff922b','#845ef7','#ff4757','#74c0fc'];
+  const pieces = Array.from({length:90}, () => ({
+    x: Math.random()*canvas.width, y: Math.random()*canvas.height - canvas.height,
+    r: 4+Math.random()*7, d: 2+Math.random()*3,
+    color: cols[Math.floor(Math.random()*cols.length)],
+    tilt: Math.random()*10-5, ts: 0.1+Math.random()*0.15
   }));
-
-  let angle = 0;
-  let ttl   = 120;
-
+  let angle=0, ttl=130;
   if (confettiAnim) cancelAnimationFrame(confettiAnim);
-
   function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    angle += 0.01;
+    ctx.clearRect(0,0,canvas.width,canvas.height); angle+=0.01;
     pieces.forEach(p => {
-      p.y    += p.d;
-      p.tilt += p.tiltSpeed;
-      p.x    += Math.sin(angle) * 0.8;
-      ctx.beginPath();
-      ctx.ellipse(p.x, p.y, p.r, p.r * 0.5, p.tilt, 0, Math.PI * 2);
-      ctx.fillStyle = p.color;
-      ctx.fill();
+      p.y+=p.d; p.tilt+=p.ts; p.x+=Math.sin(angle)*0.8;
+      ctx.beginPath(); ctx.ellipse(p.x,p.y,p.r,p.r*0.5,p.tilt,0,Math.PI*2);
+      ctx.fillStyle=p.color; ctx.fill();
     });
-    ttl--;
-    if (ttl > 0) confettiAnim = requestAnimationFrame(draw);
-    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if(--ttl>0) confettiAnim=requestAnimationFrame(draw);
+    else ctx.clearRect(0,0,canvas.width,canvas.height);
   }
   draw();
 }
