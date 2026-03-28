@@ -456,10 +456,15 @@ function onKeyDown(e) {
 
   if (e.key === 'Backspace') {
     e.preventDefault();
-    this.value = '';
-    this.classList.remove('correct','wrong');
-    if (i > 0) boxes[i - 1].focus();
-    document.getElementById('status-msg').textContent = '';
+    if (!this.disabled) {
+      this.value = '';
+      this.classList.remove('correct','wrong');
+      document.getElementById('status-msg').textContent = '';
+    }
+    // jump back to nearest unlocked box
+    for (let j = i - 1; j >= 0; j--) {
+      if (!boxes[j].disabled) { boxes[j].focus(); break; }
+    }
   } else if (e.key === 'ArrowLeft' && i > 0) {
     boxes[i - 1].focus();
   } else if (e.key === 'ArrowRight' && i < boxes.length - 1) {
@@ -490,22 +495,19 @@ function onInput(e) {
 
   document.getElementById('status-msg').textContent = '';
 
-  // advance to next empty
-  if (i < boxes.length - 1) {
-    boxes[i + 1].focus();
-  }
+  // lock correct box
+  this.disabled = true;
+
+  // advance to next unlocked box
+  const next = boxes.findIndex((b, idx) => idx > i && !b.disabled);
+  if (next !== -1) boxes[next].focus();
 
   // check complete
   checkComplete(boxes);
 }
 
 function checkComplete(boxes) {
-  const filled = boxes.every(b => b.value !== '');
-  if (!filled) return;
-  const typed = boxes.map(b => b.value.toLowerCase()).join('');
-  if (typed === currentWord) {
-    showSuccess();
-  }
+  if (boxes.every(b => b.disabled)) showSuccess();
 }
 
 // ── Hint ─────────────────────────────────────────────────────────────────────
