@@ -11,7 +11,8 @@ function extractTitle(text) {
 }
 
 function extractDate(text) {
-  const m = text.match(/\*\*(?:更新日期|報告日期)\*\*[：:]\s*(\d{4}-\d{2}-\d{2})/);
+  // 支援兩種格式："**標籤**：日期" 跟 "**標籤：**日期"
+  const m = text.match(/\*\*(?:更新日期|報告日期)[：:]?\*\*[：:]?\s*(\d{4}-\d{2}-\d{2})/);
   return m ? m[1] : null;
 }
 
